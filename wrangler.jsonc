@@ -1,0 +1,16 @@
+{
+  // Set "name" to your existing Worker's name so it keeps the same workers.dev address
+  "name": "holiday-split",
+  "main": "worker.js",
+  "compatibility_date": "2025-09-01",
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS"
+  },
+  "kv_namespaces": [
+    {
+      "binding": "TRIPS",
+      "id": "89724cbf43f3482293324be801af3893"
+    }
+  ]
+}
