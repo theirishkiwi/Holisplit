@@ -1,0 +1,481 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f6f7fb">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}[hidden]{display:none!important}</style>
+<title>Holiday Split</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700&family=Figtree:wght@400;500;600;700&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.5.0/lz-string.min.js"></script>
+<style>
+/* Layout: one narrow column, three tabs, a round green add button bottom right. Soft pastels; avatars and icons carry meaning instead of text. */
+:root{
+  --bg:#f6f7fb;--card:#ffffff;--fg:#232838;--muted:#767d92;--line:#e6e8f0;--tile:#f0f2f8;
+  --accent:#5c6cc9;--soft:#e3e7fb;--soft-ink:#2c3670;
+  --go:#3fb27a;--wa:#cdeedb;--wa-ink:#1d5a3a;
+  --pos:#2f9461;--neg:#cf5a62;--note:#fff1d9;--note-ink:#6e5317;
+  --display:"Outfit",system-ui,sans-serif;--body:"Figtree",system-ui,sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#13151c;--card:#1c1f29;--fg:#e9ebf3;--muted:#949ab0;--line:#2a2e3b;--tile:#252937;
+  --accent:#a3b0f5;--soft:#2c3358;--soft-ink:#dfe4ff;
+  --go:#3fb27a;--wa:#1f3d2d;--wa-ink:#bdebd0;
+  --pos:#7fd4a5;--neg:#f19aa0;--note:#3a311b;--note-ink:#f3dba4;color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#13151c;--card:#1c1f29;--fg:#e9ebf3;--muted:#949ab0;--line:#2a2e3b;--tile:#252937;
+  --accent:#a3b0f5;--soft:#2c3358;--soft-ink:#dfe4ff;
+  --go:#3fb27a;--wa:#1f3d2d;--wa-ink:#bdebd0;
+  --pos:#7fd4a5;--neg:#f19aa0;--note:#3a311b;--note-ink:#f3dba4;color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font:16px/1.4 var(--body);font-variant-numeric:tabular-nums;padding-inline:16px;padding-block:0 110px}
+.wrap{max-width:560px;margin:0 auto}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer;-webkit-tap-highlight-color:transparent}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+svg.i{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;flex:none}
+
+header{display:flex;align-items:center;gap:8px;padding-block:18px 12px}
+#trip{flex:1;min-width:0;font:700 1.6rem/1.2 var(--display);background:none;border:0;padding:4px 0}
+#trip:focus{outline:none;border-bottom:1px dashed var(--line)}
+.iconbtn{border:0;background:var(--card);border-radius:12px;width:42px;height:42px;display:grid;place-items:center;color:var(--muted);flex:none}
+
+.banner{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:space-between;background:var(--note);color:var(--note-ink);border-radius:14px;padding:8px 8px 8px 14px;font-size:.9rem;font-weight:500;margin-bottom:12px}
+.banner span{flex:1;min-width:10em}
+.banner .bb{display:flex;gap:6px}
+.banner button{background:var(--card);border:0;color:var(--fg);border-radius:9px;padding:7px 12px;font-weight:600}
+
+.tabs{display:grid;grid-template-columns:repeat(3,1fr);background:var(--card);border-radius:14px;padding:4px;gap:4px;position:sticky;top:env(safe-area-inset-top,0px);z-index:2;box-shadow:0 1px 0 var(--line)}
+.tabs button{border:0;background:none;border-radius:10px;padding:9px 0;font-weight:600;color:var(--muted)}
+.tabs button[aria-selected="true"]{background:var(--soft);color:var(--soft-ink)}
+
+/* avatars: pastel fill, dark initial */
+.av{--s:30px;width:var(--s);height:var(--s);border-radius:50%;display:inline-grid;place-items:center;color:#2a2f3d;font:700 calc(var(--s)*.46)/1 var(--display);flex:none}
+.av.sm{--s:22px}.av.lg{--s:40px}
+.stack{display:inline-flex;align-items:center}
+.stack .av{box-shadow:0 0 0 2px var(--card)}
+.stack .av+.av{margin-left:-7px}
+.who{display:flex;align-items:center;gap:5px;color:var(--muted);font-size:.8rem;margin-top:3px}
+.who svg.i{width:14px;height:14px}
+
+.bar{display:flex;justify-content:space-between;align-items:center;padding:18px 2px 10px}
+.bar b{font:700 1.7rem var(--display)}
+.ghost{border:0;background:none;color:var(--accent);font-weight:600;font-size:.9rem;display:inline-flex;align-items:center;gap:4px;padding:6px 4px}
+
+.day{background:var(--card);border-radius:16px;margin-bottom:10px;overflow:hidden}
+.dayh{display:flex;align-items:center;gap:8px;width:100%;border:0;background:none;padding:13px 14px;font-weight:600;text-align:left}
+.dayh .d{flex:1}
+.dayh .s{color:var(--muted);font-weight:500}
+.dayh svg.i{color:var(--muted);transition:transform .15s}
+.day.open .dayh svg.i{transform:rotate(90deg)}
+.items{list-style:none;margin:0;padding:0 6px 6px}
+.row{display:flex;gap:12px;align-items:center;width:100%;text-align:left;background:none;border:0;border-radius:12px;padding:9px 8px}
+button.row:hover{background:var(--tile)}
+.ic{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;flex:none;color:#3a4052}
+.row .main{flex:1;min-width:0}
+.row .t{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.amt{font-weight:700}
+.empty{color:var(--muted);text-align:center;padding:48px 10px}
+
+h2{font:600 .78rem var(--body);text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:22px 4px 8px}
+.card{background:var(--card);border-radius:16px;padding:6px}
+.pos{color:var(--pos)}.neg{color:var(--neg)}
+.flow{display:flex;align-items:center;gap:8px;flex:1;min-width:0;font-weight:600;flex-wrap:wrap}
+.flow svg.i{color:var(--muted)}
+.square{padding:18px;text-align:center;color:var(--muted);font-weight:500}
+
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px}
+.btn{border:0;background:var(--card);border-radius:14px;padding:14px;font-weight:600;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:8px;color:var(--fg)}
+.btn.primary{background:var(--soft);color:var(--soft-ink)}
+.btn.wa{background:var(--wa);color:var(--wa-ink)}
+.btn.danger{color:var(--neg);background:var(--tile)}
+.hint{color:var(--muted);font-size:.8rem;text-align:center;margin:8px 0 0}
+
+.addp{display:flex;gap:8px;margin-top:14px}
+.addp input{flex:1;min-width:0}
+.field{border:1px solid var(--line);background:var(--card);border-radius:12px;padding:12px;width:100%}
+.x{border:0;background:none;color:var(--muted);padding:8px}
+.msg{color:var(--neg);font-size:.88rem;margin:6px 4px 0}
+.msg:empty{display:none}
+
+.fab{position:fixed;right:calc(20px + env(safe-area-inset-right,0px));bottom:calc(20px + env(safe-area-inset-bottom,0px));width:60px;height:60px;border-radius:50%;border:0;background:var(--go);color:#fff;display:grid;place-items:center;box-shadow:0 8px 22px rgb(30 110 70 / .32);z-index:3}
+.fab svg.i{width:30px;height:30px;stroke-width:2.6}
+
+.scrim{position:fixed;inset:0;background:rgb(10 12 20 / .4);z-index:9;display:flex;align-items:flex-end;justify-content:center}
+.sheet{background:var(--bg);width:100%;max-width:560px;max-height:94%;overflow:auto;border-radius:22px 22px 0 0;padding:16px 16px calc(16px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:14px}
+.sh{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.sh h3{margin:0;font:700 1.25rem var(--display)}
+.sh input{border:0;background:var(--card);border-radius:10px;padding:7px 9px;font-size:.9rem}
+.big{font:700 2rem var(--display)!important;text-align:center;padding:14px!important}
+.cats{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px}
+.cat{border:2px solid transparent;border-radius:12px;width:44px;height:44px;display:grid;place-items:center;flex:none;color:#3a4052;opacity:.45}
+.cat[aria-pressed="true"]{opacity:1;border-color:var(--accent)}
+.lbl{display:flex;justify-content:space-between;align-items:center;font-size:.78rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600;margin-bottom:-6px}
+.lbl button{background:none;border:0;color:var(--accent);font-weight:700;font-size:.78rem;letter-spacing:.08em;text-transform:uppercase;padding:2px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:2px solid transparent;background:var(--card);border-radius:999px;padding:4px 12px 4px 4px;font-weight:600;display:inline-flex;align-items:center;gap:7px;opacity:.5}
+.chip[aria-pressed="true"]{opacity:1;border-color:var(--accent)}
+.each{color:var(--muted);font-size:.85rem;text-align:center;min-height:1.2em}
+.sheet .foot{display:flex;gap:10px}
+.sheet .foot .primary{flex:1}
+
+/* settings */
+.set{background:var(--card);border-radius:16px;padding:4px 14px}
+.set>div{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}
+.set>div:last-child{border-bottom:0}
+.set .col{flex-direction:column;align-items:stretch;gap:8px}
+.set label{font-weight:600}
+.set small{display:block;color:var(--muted);font-weight:400;font-size:.8rem}
+.set input.field{padding:10px}
+.cur{width:4em;text-align:center}
+.sw{appearance:none;width:48px;height:28px;border-radius:999px;background:var(--line);position:relative;flex:none;cursor:pointer;transition:background .15s}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgb(0 0 0 / .25);transition:transform .15s}
+.sw:checked{background:var(--go)}
+.sw:checked::after{transform:translateX(20px)}
+
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(96px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--bg);padding:9px 16px;border-radius:10px;font-size:.9rem;font-weight:500;z-index:20;white-space:nowrap}
+@media (prefers-reduced-motion:no-preference){.sheet{animation:up .18s ease-out}@keyframes up{from{transform:translateY(30px);opacity:.6}}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <input id="trip" type="text" aria-label="Trip name">
+    <button class="iconbtn" id="gear" aria-label="Settings"><svg class="i"><use href="#i-gear"/></svg></button>
+  </header>
+  <div class="banner" id="incoming" hidden><span id="incText"></span><div class="bb"><button id="incKeep">Keep mine</button><button id="incYes">Open it</button></div></div>
+  <div class="banner" id="sample" hidden><span>Example trip</span><button id="clearSample">Start fresh</button></div>
+  <nav class="tabs" role="tablist">
+    <button role="tab" data-tab="exp">Expenses</button>
+    <button role="tab" data-tab="bal">Settle up</button>
+    <button role="tab" data-tab="ppl">Group</button>
+  </nav>
+  <section id="exp"></section>
+  <section id="bal" hidden></section>
+  <section id="ppl" hidden></section>
+</div>
+<button class="fab" id="add" aria-label="Add expense"><svg class="i"><use href="#i-plus"/></svg></button>
+<div class="scrim" id="scrim" hidden></div>
+<div class="toast" id="toast" hidden></div>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="c-food" viewBox="0 0 24 24"><path d="M7 3v18M4 3v5a3 3 0 0 0 6 0V3M18 21V3c-2.5 1-4 3.5-4 7v4h4"/></symbol>
+  <symbol id="c-groceries" viewBox="0 0 24 24"><path d="M2 3h3l2.6 12.4a1 1 0 0 0 1 .8h9.3a1 1 0 0 0 1-.8L21 7H6"/><circle cx="9" cy="20" r="1.4"/><circle cx="18" cy="20" r="1.4"/></symbol>
+  <symbol id="c-drinks" viewBox="0 0 24 24"><path d="M5 4h14l-7 8zM12 12v8M8 20h8"/></symbol>
+  <symbol id="c-transport" viewBox="0 0 24 24"><path d="M5 17h14v-5l-2-5H7l-2 5zM5 12h14M7 17v3M17 17v3"/><circle cx="8" cy="14.5" r=".6"/><circle cx="16" cy="14.5" r=".6"/></symbol>
+  <symbol id="c-stay" viewBox="0 0 24 24"><path d="M3 19V5M3 15h18v4M21 15v-3a3 3 0 0 0-3-3h-7v6"/><circle cx="7" cy="11" r="1.8"/></symbol>
+  <symbol id="c-activity" viewBox="0 0 24 24"><path d="M3 8a1 1 0 0 1 1-1h16a1 1 0 0 1 1 1v2a2 2 0 0 0 0 4v2a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-2a2 2 0 0 0 0-4zM14 7v2M14 11v2M14 15v2"/></symbol>
+  <symbol id="c-other" viewBox="0 0 24 24"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></symbol>
+  <symbol id="i-chat" viewBox="0 0 24 24"><path d="M4 20l1.3-3.9A8 8 0 1 1 8 19z"/></symbol>
+  <symbol id="i-expand" viewBox="0 0 24 24"><path d="m7 15 5 5 5-5M7 9l5-5 5 5"/></symbol>
+  <symbol id="i-collapse" viewBox="0 0 24 24"><path d="m7 20 5-5 5 5M7 4l5 5 5-5"/></symbol>
+  <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></symbol>
+</svg>
+
+<script>
+/* Sync-ready model: every person/expense has an id and updatedAt (u); deletes are tombstones (del). Amounts in pence. */
+const KEY='holiday-split-v1',PKEY='holiday-split-prefs';
+const $=s=>document.querySelector(s);
+const uid=()=>Math.random().toString(36).slice(2,10);
+const now=()=>Date.now();
+const today=()=>new Date().toISOString().slice(0,10);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const ico=(id,cls='i')=>`<svg class="${cls}"><use href="#${id}"/></svg>`;
+
+const COLORS=['#ffcfb3','#bfe6c9','#bcd8f5','#dccbf3','#f8c3cd','#b2e3df','#f6e1a6','#ccd1f7'];
+const CATS=['food','groceries','drinks','transport','stay','activity','other'];
+const CAT_COL={food:'#ffdcc7',groceries:'#cdeed7',drinks:'#f9d3dc',transport:'#cfe2f8',stay:'#e3d6f6',activity:'#f8e8b8',other:'#dde1ea'};
+const CAT_RX={
+  groceries:/super|market|grocer|shop|tesco|lidl|aldi|mercadona|carrefour|spar|co-?op|bakery/i,
+  drinks:/drink|bar\b|beer|wine|pub|cocktail|coffee|caf[eé]|gin/i,
+  food:/dinner|lunch|breakfast|brunch|meal|restaurant|tapas|pizza|food|snack|ice ?cream|takeaway|burger|sushi/i,
+  transport:/taxi|uber|bolt|bus|train|car\b|hire|fuel|petrol|diesel|parking|flight|ferry|transfer|airport|toll|metro/i,
+  stay:/hotel|airbnb|villa|apartment|hostel|room|stay|accommodation/i,
+  activity:/ticket|boat|tour|museum|entry|excursion|golf|surf|kayak|show|beach|spa|park/i
+};
+const guessCat=d=>CATS.find(c=>CAT_RX[c]&&CAT_RX[c].test(d))||'other';
+
+function sample(){
+  const P=['Chris','Sam','Alex','Jo'].map((n,i)=>({id:uid(),name:n,c:i,u:now()}));
+  const [c,s,a,j]=P.map(p=>p.id), d=n=>{const x=new Date();x.setDate(x.getDate()-n);return x.toISOString().slice(0,10)};
+  const E=[
+    ['Tapas dinner',8640,d(0),c,[c,s,a,j]],
+    ['Beach bar',2450,d(0),s,[c,s,a,j]],
+    ['Mercadona',4215,d(1),s,[c,s,a,j]],
+    ['Boat trip',6000,d(1),a,[c,a]],
+    ['Taxi from airport',3800,d(2),j,[c,s,a,j]],
+    ['Villa deposit',30000,d(2),c,[c,s,a,j]],
+  ].map(([desc,amt,date,paidBy,f])=>({id:uid(),desc,amt,date,paidBy,for:f,cat:guessCat(desc),u:now()}));
+  return {v:1,id:uid(),name:'Spain 2026',cur:'€',nu:0,sample:true,people:P,expenses:E,u:now()};
+}
+const blank=()=>({v:1,id:uid(),name:'My trip',cur:'£',nu:now(),people:[],expenses:[],u:now()});
+const fix=t=>{t.people.forEach((p,i)=>{if(p.c==null)p.c=i%COLORS.length});t.expenses.forEach(e=>{if(!e.cat)e.cat=guessCat(e.desc)});if(t.nu==null)t.nu=0;return t};
+let S;
+try{S=JSON.parse(localStorage.getItem(KEY))}catch(e){}
+S=fix(S&&S.v?S:sample());
+const save=()=>{S.u=now();try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}};
+
+/* Per-device preferences */
+let prefs={share:true,base:''};
+try{Object.assign(prefs,JSON.parse(localStorage.getItem(PKEY))||{})}catch(e){}
+const savePrefs=()=>{try{localStorage.setItem(PKEY,JSON.stringify(prefs))}catch(e){}};
+const baseUrl=()=>prefs.base||location.href.split('#')[0];
+
+/* ---- Link sharing: trip JSON → LZ-compressed bytes → base64url token "#tz…" (letters, digits, - and _ only) ---- */
+function toB64u(u8){let s='';for(let i=0;i<u8.length;i+=8192)s+=String.fromCharCode.apply(null,u8.subarray(i,i+8192));return btoa(s).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')}
+function fromB64u(t){t=t.replace(/-/g,'+').replace(/_/g,'/');while(t.length%4)t+='=';const b=atob(t),u=new Uint8Array(b.length);for(let i=0;i<b.length;i++)u[i]=b.charCodeAt(i);return u}
+function encodeTrip(){
+  const t={...S};delete t.sample;delete t.lastPayer;
+  const json=JSON.stringify(t);
+  if(window.LZString)return 'tz'+toB64u(LZString.compressToUint8Array(json));
+  return 'tr'+toB64u(new TextEncoder().encode(json));
+}
+function decodeTrip(tok){
+  const m=String(tok).match(/t([zr])([A-Za-z0-9_-]{8,})/);if(!m)return null;
+  const bytes=fromB64u(m[2]);
+  const json=m[1]==='z'?LZString.decompressFromUint8Array(bytes):new TextDecoder().decode(bytes);
+  const t=JSON.parse(json);
+  if(!t||!t.v||!Array.isArray(t.people)||!Array.isArray(t.expenses))return null;
+  return fix(t);
+}
+const shareLink=()=>baseUrl()+'#'+encodeTrip();
+
+let pending=null;
+function receive(inc){
+  if(!inc)return toast('That link isn\'t a trip');
+  const empty=!S.people.some(p=>!p.del)&&!S.expenses.some(e=>!e.del);
+  if(inc.id===S.id)return merge(inc);
+  if(S.sample||empty){S=inc;open=null;save();render();return toast(`Opened ${S.name}`)}
+  pending=inc;$('#incText').textContent=`Open "${inc.name}"? It replaces "${S.name}" on this phone.`;$('#incoming').hidden=false;
+}
+/* Merge by id; newest updatedAt wins, so anyone can add and re-share */
+function merge(inc){
+  let added=0,updated=0;
+  ['people','expenses'].forEach(k=>inc[k].forEach(x=>{
+    const l=S[k].find(y=>y.id===x.id);
+    if(!l){S[k].push(x);if(!x.del)added++}
+    else if((x.u||0)>(l.u||0)){Object.assign(l,x);updated++}
+  }));
+  if((inc.nu||0)>(S.nu||0)){S.name=inc.name;S.cur=inc.cur;S.nu=inc.nu}
+  delete S.sample;save();render();
+  toast(added||updated?`${added} new · ${updated} updated`:'Already up to date');
+}
+function checkHash(){
+  const h=location.hash.slice(1);if(!/^t[zr]/.test(h))return;
+  try{receive(decodeTrip(h))}catch(e){toast('That link isn\'t a trip')}
+  try{history.replaceState(null,'',location.href.split('#')[0])}catch(e){}
+}
+
+const people=()=>S.people.filter(p=>!p.del);
+const expenses=()=>S.expenses.filter(e=>!e.del).sort((a,b)=>b.date.localeCompare(a.date)||b.u-a.u);
+const person=id=>S.people.find(p=>p.id===id)||{name:'?',c:0};
+const pname=id=>person(id).name;
+const av=(id,cls='')=>{const p=person(id);return `<span class="av ${cls}" style="background:${COLORS[p.c%COLORS.length]}" title="${esc(p.name)}">${esc((p.name[0]||'?').toUpperCase())}</span>`};
+const stack=(ids,cls='sm')=>`<span class="stack">${ids.slice(0,5).map(id=>av(id,cls)).join('')}${ids.length>5?`<span class="av ${cls}" style="background:${CAT_COL.other}">+${ids.length-5}</span>`:''}</span>`;
+const money=p=>{const n=Math.abs(p)/100;return (p<0?'−':'')+S.cur+n.toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2})};
+const toPence=v=>{const n=parseFloat(String(v).replace(',','.').replace(/[^0-9.]/g,''));return isFinite(n)?Math.round(n*100):NaN};
+const nextColor=()=>{const used=people().map(p=>p.c);for(let i=0;i<COLORS.length;i++)if(!used.includes(i))return i;return people().length%COLORS.length};
+
+/* Equal split in pence; leftover pennies go to the payer first, then list order */
+function shares(e){
+  const ids=[...e.for].sort((x,y)=>(y===e.paidBy)-(x===e.paidBy));
+  const base=Math.floor(e.amt/ids.length);let r=e.amt-base*ids.length;
+  const out={};ids.forEach(id=>{out[id]=base+(r-->0?1:0)});return out;
+}
+function balances(){
+  const b={};people().forEach(p=>b[p.id]={paid:0,share:0});
+  expenses().forEach(e=>{
+    if(b[e.paidBy])b[e.paidBy].paid+=e.amt;
+    const sh=shares(e);for(const id in sh)if(b[id])b[id].share+=sh[id];
+  });
+  return b;
+}
+/* Fewest transfers: match the largest debtor with the largest creditor */
+function settle(b){
+  const cr=[],db=[];
+  for(const id in b){const n=b[id].paid-b[id].share;if(n>0)cr.push([id,n]);else if(n<0)db.push([id,-n])}
+  const t=[];
+  while(cr.length&&db.length){
+    cr.sort((x,y)=>y[1]-x[1]);db.sort((x,y)=>y[1]-x[1]);
+    const m=Math.min(cr[0][1],db[0][1]);t.push([db[0][0],cr[0][0],m]);
+    cr[0][1]-=m;db[0][1]-=m;if(!cr[0][1])cr.shift();if(!db[0][1])db.shift();
+  }
+  return t;
+}
+function summary(){
+  const t=settle(balances()),total=expenses().reduce((s,e)=>s+e.amt,0);
+  let s=`*${S.name}* · ${money(total)} total\n\n`;
+  s+=t.length?t.map(([f,to,m])=>`${pname(f)} → ${pname(to)}: *${money(m)}*`).join('\n'):'Everyone is square ✅';
+  if(prefs.share)s+=`\n\nOpen or update the trip:\n${shareLink()}`;
+  return s;
+}
+const fmtDate=d=>{const t=today(),y=new Date(Date.now()-864e5).toISOString().slice(0,10);
+  return d===t?'Today':d===y?'Yesterday':new Date(d+'T12:00').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})};
+
+let tab='exp',open=null;
+function render(){
+  $('#trip').value=S.name;$('#sample').hidden=!S.sample;
+  document.querySelectorAll('.tabs button').forEach(b=>b.setAttribute('aria-selected',b.dataset.tab===tab));
+  ['exp','bal','ppl'].forEach(id=>$('#'+id).hidden=id!==tab);
+  $('#add').hidden=tab==='ppl';
+  ({exp:rExp,bal:rBal,ppl:rPpl})[tab]();
+}
+function rExp(){
+  const E=expenses();
+  if(!people().length){$('#exp').innerHTML='<p class="empty">Add your group first.</p>';return}
+  if(!E.length){$('#exp').innerHTML='<p class="empty">No expenses yet.</p>';return}
+  const days=[...new Set(E.map(e=>e.date))];
+  if(!open)open=new Set([days[0]]);
+  const all=days.every(d=>open.has(d));
+  let h=`<div class="bar"><b>${money(E.reduce((s,e)=>s+e.amt,0))}</b>${days.length>1?`<button class="ghost" id="toggleAll">${ico(all?'i-collapse':'i-expand')}${all?'Collapse all':'Expand all'}</button>`:''}</div>`;
+  const everyone=people().length;
+  days.forEach(d=>{
+    const de=E.filter(e=>e.date===d),isOpen=open.has(d);
+    h+=`<div class="day${isOpen?' open':''}"><button class="dayh" data-day="${d}" aria-expanded="${isOpen}"><span class="d">${fmtDate(d)}</span><span class="s">${money(de.reduce((s,e)=>s+e.amt,0))}</span>${ico('i-chev')}</button>`;
+    if(isOpen)h+='<ul class="items">'+de.map(e=>`<li><button class="row" data-edit="${e.id}"><span class="ic" style="background:${CAT_COL[e.cat]}">${ico('c-'+e.cat)}</span><span class="main"><div class="t">${esc(e.desc)}</div><div class="who">${av(e.paidBy,'sm')}${ico('i-arrow')}${e.for.length===everyone?'<span>All</span>':stack(e.for)}</div></span><span class="amt">${money(e.amt)}</span></button></li>`).join('')+'</ul>';
+    h+='</div>';
+  });
+  $('#exp').innerHTML=h;
+}
+function rBal(){
+  const b=balances(),t=settle(b);
+  let h='<h2>Who pays who</h2><div class="card">';
+  h+=t.length?t.map(([f,to,m])=>`<div class="row"><span class="flow">${av(f)}<span>${esc(pname(f))}</span>${ico('i-arrow')}${av(to)}<span>${esc(pname(to))}</span></span><span class="amt">${money(m)}</span></div>`).join(''):'<div class="square">Everyone is square</div>';
+  h+='</div><div class="actions"><button class="btn primary" id="copy">'+ico('i-copy')+'Copy</button><a class="btn wa" href="https://wa.me/?text='+encodeURIComponent(summary())+'" target="_blank" rel="noopener">'+ico('i-chat')+'WhatsApp</a></div>';
+  if(prefs.share)h+='<p class="hint">Includes a link that opens this trip for the group</p>';
+  h+='<h2>Balances</h2><div class="card">';
+  people().forEach(p=>{const n=b[p.id].paid-b[p.id].share;
+    h+=`<div class="row">${av(p.id)}<span class="main"><div class="t">${esc(p.name)}</div><div class="who">Paid ${money(b[p.id].paid)}</div></span><span class="amt ${n>0?'pos':n<0?'neg':''}">${n>0?'+':''}${money(n)}</span></div>`});
+  $('#bal').innerHTML=h+'</div>';
+}
+function rPpl(){
+  let h='<form class="addp" id="pform"><input id="pname" class="field" type="text" placeholder="Add a name" autocomplete="off" aria-label="Name"><button class="btn primary" aria-label="Add">'+ico('i-plus')+'</button></form><p class="msg" id="pmsg"></p>';
+  if(people().length){h+='<div class="card" style="margin-top:12px">';
+    people().forEach(p=>h+=`<div class="row">${av(p.id,'lg')}<span class="main"><div class="t">${esc(p.name)}</div></span><button class="x" data-rm="${p.id}" aria-label="Remove ${esc(p.name)}">${ico('i-x')}</button></div>`);
+    h+='</div>'}
+  else h+='<p class="empty">Who\'s on the trip?</p>';
+  $('#ppl').innerHTML=h;
+}
+
+document.querySelector('.tabs').onclick=e=>{const b=e.target.closest('button');if(b){tab=b.dataset.tab;render()}};
+$('#trip').onchange=e=>{S.name=e.target.value.trim()||'Trip';S.nu=now();save();render()};
+$('#clearSample').onclick=()=>{S=blank();open=null;save();tab='ppl';render();setTimeout(()=>$('#pname')?.focus(),50)};
+$('#incKeep').onclick=()=>{pending=null;$('#incoming').hidden=true};
+$('#incYes').onclick=()=>{S=pending;pending=null;open=null;$('#incoming').hidden=true;save();render();toast(`Opened ${S.name}`)};
+$('#gear').onclick=openSettings;
+
+const toast=t=>{const el=$('#toast');el.textContent=t;el.hidden=false;clearTimeout(toast.h);toast.h=setTimeout(()=>el.hidden=true,2000)};
+const unsample=()=>{delete S.sample};
+
+document.addEventListener('click',e=>{
+  const dh=e.target.closest('[data-day]');if(dh){const d=dh.dataset.day;open.has(d)?open.delete(d):open.add(d);rExp();return}
+  if(e.target.closest('#toggleAll')){const days=[...new Set(expenses().map(x=>x.date))];open=days.every(d=>open.has(d))?new Set():new Set(days);rExp();return}
+  const ed=e.target.closest('[data-edit]');if(ed)return openSheet(S.expenses.find(x=>x.id===ed.dataset.edit));
+  const rm=e.target.closest('[data-rm]');
+  if(rm){const id=rm.dataset.rm,n=expenses().filter(x=>x.paidBy===id||x.for.includes(id)).length;
+    if(n){$('#pmsg').textContent=`${pname(id)} is in ${n} expense${n>1?'s':''}. Remove those first.`;return}
+    const p=S.people.find(x=>x.id===id);p.del=true;p.u=now();unsample();save();render();return}
+  if(e.target.closest('#copy'))copy(summary(),'Copied');
+});
+function copy(t,ok){navigator.clipboard.writeText(t).then(()=>toast(ok)).catch(()=>toast('Copy blocked here. Use WhatsApp instead.'))}
+document.addEventListener('submit',e=>{
+  if(e.target.id!=='pform')return;e.preventDefault();
+  const n=$('#pname').value.trim();if(!n)return;
+  if(people().some(p=>p.name.toLowerCase()===n.toLowerCase())){$('#pmsg').textContent=`${n} is already in the group.`;return}
+  S.people.push({id:uid(),name:n,c:nextColor(),u:now()});unsample();save();render();$('#pname').focus();
+});
+
+$('#add').onclick=()=>{if(!people().length){tab='ppl';render();$('#pmsg').textContent='Add someone first.';return}openSheet()};
+
+function openSheet(ex){
+  const P=people(),isNew=!ex;
+  const lastPayer=P.some(p=>p.id===S.lastPayer)?S.lastPayer:P[0].id;
+  const f={cat:ex?.cat||'other',catSet:!!ex,paidBy:ex?.paidBy||lastPayer,for:new Set(ex?.for||P.map(p=>p.id))};
+  const sc=$('#scrim');sc.hidden=false;
+  const chip=(p,on,attr)=>`<button type="button" class="chip" data-${attr}="${p.id}" aria-pressed="${on}">${av(p.id,'sm')}${esc(p.name)}</button>`;
+  const draw=()=>{
+    const n=f.for.size,a=toPence($('#famt').value);
+    $('#cats').innerHTML=CATS.map(c=>`<button type="button" class="cat" data-cat="${c}" aria-pressed="${c===f.cat}" aria-label="${c}" style="background:${CAT_COL[c]}">${ico('c-'+c)}</button>`).join('');
+    $('#paidChips').innerHTML=P.map(p=>chip(p,p.id===f.paidBy,'paid')).join('');
+    $('#forChips').innerHTML=P.map(p=>chip(p,f.for.has(p.id),'for')).join('');
+    $('#each').textContent=n&&a>0?`${money(Math.round(a/n))} each`:'';
+    $('#allBtn').textContent=n===P.length?'None':'All';
+  };
+  sc.innerHTML=`<form class="sheet" id="eform" role="dialog" aria-label="${isNew?'Add':'Edit'} expense">
+    <div class="sh"><h3>${isNew?'New expense':'Edit expense'}</h3><input id="fdate" type="date" value="${ex?.date||today()}" aria-label="Date"></div>
+    <input id="famt" class="field big" inputmode="decimal" placeholder="${esc(S.cur)}0.00" value="${ex?(ex.amt/100).toFixed(2):''}" autocomplete="off" aria-label="Amount">
+    <input id="fdesc" class="field" type="text" placeholder="What for?" value="${esc(ex?.desc||'')}" autocomplete="off" aria-label="Description">
+    <div class="cats" id="cats"></div>
+    <div class="lbl">Paid by</div><div class="chips" id="paidChips"></div>
+    <div class="lbl">Split <button type="button" id="allBtn"></button></div><div class="chips" id="forChips"></div>
+    <div class="each" id="each"></div>
+    <p class="msg" id="emsg"></p>
+    <div class="foot">${isNew?'':'<button type="button" class="btn danger" id="del">Delete</button>'}<button class="btn primary">${isNew?'Add':'Save'}</button></div>
+  </form>`;
+  draw();if(isNew)setTimeout(()=>$('#famt').focus(),60);
+  let armed=false;
+  sc.onclick=e=>{
+    if(e.target===sc)return close();
+    const ct=e.target.closest('[data-cat]');if(ct){f.cat=ct.dataset.cat;f.catSet=true;draw();return}
+    const pd=e.target.closest('[data-paid]');if(pd){f.paidBy=pd.dataset.paid;draw();return}
+    const fr=e.target.closest('[data-for]');if(fr){const id=fr.dataset.for;f.for.has(id)?f.for.delete(id):f.for.add(id);draw();return}
+    if(e.target.id==='allBtn'){f.for.size===P.length?f.for.clear():P.forEach(p=>f.for.add(p.id));draw();return}
+    if(e.target.id==='del'){if(!armed){armed=true;e.target.textContent='Tap to confirm';return}
+      ex.del=true;ex.u=now();unsample();save();close();render();toast('Deleted')}
+  };
+  $('#famt').oninput=draw;
+  $('#fdesc').oninput=e=>{if(!f.catSet){f.cat=guessCat(e.target.value);draw()}};
+  $('#eform').onsubmit=e=>{e.preventDefault();
+    const a=toPence($('#famt').value),d=$('#fdesc').value.trim()||'Expense',dt=$('#fdate').value||today();
+    if(!(a>0))return $('#emsg').textContent='Enter an amount.';
+    if(!f.for.size)return $('#emsg').textContent='Pick who it\'s split between.';
+    const rec={desc:d,amt:a,date:dt,paidBy:f.paidBy,for:[...f.for],cat:f.cat,u:now()};
+    if(isNew)S.expenses.push({id:uid(),...rec});else Object.assign(ex,rec);
+    S.lastPayer=f.paidBy;open?.add(dt);
+    unsample();save();close();tab='exp';render();toast(isNew?'Added':'Saved');
+  };
+}
+
+function openSettings(){
+  const sc=$('#scrim');sc.hidden=false;
+  sc.innerHTML=`<div class="sheet" role="dialog" aria-label="Settings">
+    <div class="sh"><h3>Settings</h3><button class="iconbtn" id="sclose" aria-label="Close">${ico('i-x')}</button></div>
+    <div class="set">
+      <div><label for="scur">Currency</label><input id="scur" class="field cur" type="text" maxlength="3" value="${esc(S.cur)}"></div>
+      <div><label for="sshare">Share by link<small>Adds a trip link to WhatsApp messages</small></label><input id="sshare" class="sw" type="checkbox" role="switch" ${prefs.share?'checked':''}></div>
+      <div class="col" id="shareOpts" ${prefs.share?'':'hidden'}>
+        <label for="sbase">App address<small>Where shared links open. Use your hosted copy's address.</small></label>
+        <input id="sbase" class="field" type="url" placeholder="${esc(location.href.split('#')[0])}" value="${esc(prefs.base)}" autocomplete="off">
+        <button class="btn primary" id="scopy">${ico('i-copy')}Copy trip link</button>
+      </div>
+      <div class="col"><label for="spaste">Open a shared trip<small>Paste a link someone sent you</small></label>
+        <input id="spaste" class="field" type="text" placeholder="Paste link here" autocomplete="off"></div>
+    </div>
+    <div class="set"><div><label>New trip<small>Clears everything on this phone</small></label><button class="btn danger" id="snew">New trip</button></div></div>
+  </div>`;
+  let armed=false;
+  sc.onclick=e=>{
+    if(e.target===sc||e.target.closest('#sclose'))return close();
+    if(e.target.closest('#scopy'))copy(shareLink(),'Trip link copied');
+    if(e.target.closest('#snew')){if(!armed){armed=true;e.target.closest('#snew').textContent='Tap to confirm';return}
+      S=blank();open=null;save();close();tab='ppl';render();toast('New trip started')}
+  };
+  $('#scur').onchange=e=>{S.cur=e.target.value.trim()||'£';S.nu=now();save();render()};
+  $('#sshare').onchange=e=>{prefs.share=e.target.checked;savePrefs();$('#shareOpts').hidden=!prefs.share;render()};
+  $('#sbase').onchange=e=>{prefs.base=e.target.value.trim().split('#')[0];savePrefs();render()};
+  $('#spaste').oninput=e=>{const v=e.target.value;if(!/t[zr][A-Za-z0-9_-]{8,}/.test(v))return;
+    try{const t=decodeTrip(v);close();receive(t)}catch(err){toast('That link isn\'t a trip')}};
+}
+function close(){const sc=$('#scrim');sc.hidden=true;sc.innerHTML=''}
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('#scrim').hidden)close()});
+window.addEventListener('hashchange',checkHash);
+render();checkHash();
+</script>
+</body>
+</html>
