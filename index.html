@@ -103,13 +103,24 @@ h2{font:600 .78rem var(--body);text-transform:uppercase;letter-spacing:.08em;col
 
 .scrim{position:fixed;inset:0;background:rgb(10 12 20 / .4);z-index:9;display:flex;align-items:flex-end;justify-content:center}
 .sheet{background:var(--bg);width:100%;max-width:560px;max-height:94%;overflow:auto;border-radius:22px 22px 0 0;padding:16px 16px calc(16px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:14px}
+.sheet>*{flex-shrink:0}
+@supports (height:1dvh){.sheet{max-height:94dvh}}
 .sh{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .sh h3{margin:0;font:700 1.25rem var(--display)}
 .sh input{border:0;background:var(--card);border-radius:10px;padding:7px 9px;font-size:.9rem}
 .big{font:700 2rem var(--display)!important;text-align:center;padding:14px!important}
-.cats{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px}
-.cat{border:2px solid transparent;border-radius:12px;width:44px;height:44px;display:grid;place-items:center;flex:none;color:#3a4052;opacity:.45}
-.cat[aria-pressed="true"]{opacity:1;border-color:var(--accent)}
+.descrow{display:flex;gap:8px;position:relative}
+.descrow input{flex:1;min-width:0}
+.catbtn{border:0;border-radius:12px;width:52px;display:flex;align-items:center;justify-content:center;gap:2px;flex:none;color:#3a4052}
+.catbtn.none{background:var(--tile);color:var(--muted)}
+.catbtn .caret{width:12px;height:12px;transform:rotate(90deg);opacity:.6}
+.catmenu{position:absolute;right:0;top:calc(100% + 6px);background:var(--card);border-radius:16px;box-shadow:0 12px 32px rgb(10 14 30 / .2);padding:8px;display:grid;grid-template-columns:repeat(4,46px);gap:6px;z-index:5}
+.cat{border:2px solid transparent;border-radius:12px;width:46px;height:46px;display:grid;place-items:center;color:#3a4052}
+.cat[aria-pressed="true"]{border-color:var(--accent)}
+.pick{display:flex;gap:12px;overflow-x:auto;padding:6px 4px;scrollbar-width:none}
+.pa{border:0;background:none;padding:0;border-radius:50%;flex:none;opacity:.32;filter:saturate(.5);transition:opacity .12s}
+.pa[aria-pressed="true"]{opacity:1;filter:none;box-shadow:0 0 0 3px var(--bg),0 0 0 5px var(--accent)}
+.lbl em{font-style:normal;color:var(--fg);text-transform:none;letter-spacing:0;font-size:.9rem;margin-left:6px}
 .lbl{display:flex;justify-content:space-between;align-items:center;font-size:.78rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600;margin-bottom:-6px}
 .lbl button{background:none;border:0;color:var(--accent);font-weight:700;font-size:.78rem;letter-spacing:.08em;text-transform:uppercase;padding:2px}
 .chips{display:flex;flex-wrap:wrap;gap:8px}
@@ -199,7 +210,8 @@ const CAT_RX={
   stay:/hotel|airbnb|villa|apartment|hostel|room|stay|accommodation/i,
   activity:/ticket|boat|tour|museum|entry|excursion|golf|surf|kayak|show|beach|spa|park/i
 };
-const guessCat=d=>CATS.find(c=>CAT_RX[c]&&CAT_RX[c].test(d))||'other';
+const matchCat=d=>CATS.find(c=>CAT_RX[c]&&CAT_RX[c].test(d));
+const guessCat=d=>matchCat(d)||'other';
 
 function sample(){
   const P=['Chris','Sam','Alex','Jo'].map((n,i)=>({id:uid(),name:n,c:i,u:now()}));
@@ -396,24 +408,29 @@ $('#add').onclick=()=>{if(!people().length){tab='ppl';render();$('#pmsg').textCo
 function openSheet(ex){
   const P=people(),isNew=!ex;
   const lastPayer=P.some(p=>p.id===S.lastPayer)?S.lastPayer:P[0].id;
-  const f={cat:ex?.cat||'other',catSet:!!ex,paidBy:ex?.paidBy||lastPayer,for:new Set(ex?.for||P.map(p=>p.id))};
+  /* cat: null = not chosen yet (grey); guessed from the description until the user picks one */
+  const f={cat:ex?.cat||null,catSet:!!ex,menu:false,paidBy:ex?.paidBy||lastPayer,for:new Set(ex?.for||P.map(p=>p.id))};
   const sc=$('#scrim');sc.hidden=false;
-  const chip=(p,on,attr)=>`<button type="button" class="chip" data-${attr}="${p.id}" aria-pressed="${on}">${av(p.id,'sm')}${esc(p.name)}</button>`;
+  const pa=(p,on,attr)=>`<button type="button" class="pa" data-${attr}="${p.id}" aria-pressed="${on}" aria-label="${esc(p.name)}">${av(p.id,'lg')}</button>`;
   const draw=()=>{
-    const n=f.for.size,a=toPence($('#famt').value);
-    $('#cats').innerHTML=CATS.map(c=>`<button type="button" class="cat" data-cat="${c}" aria-pressed="${c===f.cat}" aria-label="${c}" style="background:${CAT_COL[c]}">${ico('c-'+c)}</button>`).join('');
-    $('#paidChips').innerHTML=P.map(p=>chip(p,p.id===f.paidBy,'paid')).join('');
-    $('#forChips').innerHTML=P.map(p=>chip(p,f.for.has(p.id),'for')).join('');
+    const n=f.for.size,a=toPence($('#famt').value),c=f.cat;
+    const cb=$('#catbtn');cb.className='catbtn'+(c?'':' none');cb.style.background=c?CAT_COL[c]:'';
+    cb.innerHTML=ico('c-'+(c||'other'))+ico('i-chev','i caret');cb.setAttribute('aria-expanded',f.menu);
+    $('#catmenu').hidden=!f.menu;
+    $('#catmenu').innerHTML=CATS.map(k=>`<button type="button" class="cat" data-cat="${k}" aria-pressed="${k===c}" aria-label="${k}" style="background:${CAT_COL[k]}">${ico('c-'+k)}</button>`).join('');
+    $('#paidChips').innerHTML=P.map(p=>pa(p,p.id===f.paidBy,'paid')).join('');
+    $('#forChips').innerHTML=P.map(p=>pa(p,f.for.has(p.id),'for')).join('');
+    $('#paidName').textContent=pname(f.paidBy);
+    $('#forName').textContent=n===P.length?'Everyone':`${n} of ${P.length}`;
     $('#each').textContent=n&&a>0?`${money(Math.round(a/n))} each`:'';
     $('#allBtn').textContent=n===P.length?'None':'All';
   };
   sc.innerHTML=`<form class="sheet" id="eform" role="dialog" aria-label="${isNew?'Add':'Edit'} expense">
     <div class="sh"><h3>${isNew?'New expense':'Edit expense'}</h3><input id="fdate" type="date" value="${ex?.date||today()}" aria-label="Date"></div>
     <input id="famt" class="field big" inputmode="decimal" placeholder="${esc(S.cur)}0.00" value="${ex?(ex.amt/100).toFixed(2):''}" autocomplete="off" aria-label="Amount">
-    <input id="fdesc" class="field" type="text" placeholder="What for?" value="${esc(ex?.desc||'')}" autocomplete="off" aria-label="Description">
-    <div class="cats" id="cats"></div>
-    <div class="lbl">Paid by</div><div class="chips" id="paidChips"></div>
-    <div class="lbl">Split <button type="button" id="allBtn"></button></div><div class="chips" id="forChips"></div>
+    <div class="descrow"><input id="fdesc" class="field" type="text" placeholder="What for?" value="${esc(ex?.desc||'')}" autocomplete="off" aria-label="Description"><button type="button" class="catbtn" id="catbtn" aria-label="Choose icon" aria-haspopup="true"></button><div class="catmenu" id="catmenu" hidden></div></div>
+    <div class="lbl"><span>Paid by<em id="paidName"></em></span></div><div class="pick" id="paidChips"></div>
+    <div class="lbl"><span>Split<em id="forName"></em></span><button type="button" id="allBtn"></button></div><div class="pick" id="forChips"></div>
     <div class="each" id="each"></div>
     <p class="msg" id="emsg"></p>
     <div class="foot">${isNew?'':'<button type="button" class="btn danger" id="del">Delete</button>'}<button class="btn primary">${isNew?'Add':'Save'}</button></div>
@@ -422,7 +439,9 @@ function openSheet(ex){
   let armed=false;
   sc.onclick=e=>{
     if(e.target===sc)return close();
-    const ct=e.target.closest('[data-cat]');if(ct){f.cat=ct.dataset.cat;f.catSet=true;draw();return}
+    if(e.target.closest('#catbtn')){f.menu=!f.menu;draw();return}
+    const ct=e.target.closest('[data-cat]');if(ct){f.cat=ct.dataset.cat;f.catSet=true;f.menu=false;draw();return}
+    if(f.menu&&!e.target.closest('#catmenu')){f.menu=false;draw()}
     const pd=e.target.closest('[data-paid]');if(pd){f.paidBy=pd.dataset.paid;draw();return}
     const fr=e.target.closest('[data-for]');if(fr){const id=fr.dataset.for;f.for.has(id)?f.for.delete(id):f.for.add(id);draw();return}
     if(e.target.id==='allBtn'){f.for.size===P.length?f.for.clear():P.forEach(p=>f.for.add(p.id));draw();return}
@@ -430,12 +449,12 @@ function openSheet(ex){
       ex.del=true;ex.u=now();unsample();save();close();render();toast('Deleted')}
   };
   $('#famt').oninput=draw;
-  $('#fdesc').oninput=e=>{if(!f.catSet){f.cat=guessCat(e.target.value);draw()}};
+  $('#fdesc').oninput=e=>{if(!f.catSet){f.cat=matchCat(e.target.value)||null;draw()}};
   $('#eform').onsubmit=e=>{e.preventDefault();
     const a=toPence($('#famt').value),d=$('#fdesc').value.trim()||'Expense',dt=$('#fdate').value||today();
     if(!(a>0))return $('#emsg').textContent='Enter an amount.';
     if(!f.for.size)return $('#emsg').textContent='Pick who it\'s split between.';
-    const rec={desc:d,amt:a,date:dt,paidBy:f.paidBy,for:[...f.for],cat:f.cat,u:now()};
+    const rec={desc:d,amt:a,date:dt,paidBy:f.paidBy,for:[...f.for],cat:f.cat||'other',u:now()};
     if(isNew)S.expenses.push({id:uid(),...rec});else Object.assign(ex,rec);
     S.lastPayer=f.paidBy;open?.add(dt);
     unsample();save();close();tab='exp';render();toast(isNew?'Added':'Saved');
