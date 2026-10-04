@@ -1,0 +1,12 @@
+# Set "name" to your existing Worker's name so it deploys to the same workers.dev address
+name = "holiday-split"
+main = "worker.js"
+compatibility_date = "2025-09-01"
+
+[assets]
+directory = "./public"
+binding = "ASSETS"
+
+[[kv_namespaces]]
+binding = "TRIPS"
+id = "PASTE_YOUR_KV_NAMESPACE_ID_HERE"
