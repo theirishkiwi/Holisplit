@@ -154,6 +154,13 @@ h2{font:600 .78rem var(--body);text-transform:uppercase;letter-spacing:.08em;col
 .set .trip svg.i{color:var(--go)}
 .set .trip.newt{color:var(--accent);justify-content:flex-start}
 .status{font-size:.8rem;color:var(--muted)}
+.seg{display:grid;grid-template-columns:1fr 1fr;background:var(--card);border-radius:12px;padding:3px;gap:3px;margin-top:16px}
+.seg button{border:0;background:none;border-radius:9px;padding:8px 0;font-weight:600;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--soft);color:var(--soft-ink)}
+.row.pickme{outline:2px dashed var(--accent);outline-offset:-2px}
+.row.linking,.x[aria-pressed="true"]{color:var(--accent)}
+.pickhint{color:var(--accent);font-weight:600;text-align:center;margin:12px 0 0}
+svg.i.tiny{width:14px;height:14px;vertical-align:-2px}
 .invite{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
 </style>
 </head>
@@ -196,6 +203,8 @@ h2{font:600 .78rem var(--body);text-transform:uppercase;letter-spacing:.08em;col
   <symbol id="i-expand" viewBox="0 0 24 24"><path d="m7 15 5 5 5-5M7 9l5-5 5 5"/></symbol>
   <symbol id="i-collapse" viewBox="0 0 24 24"><path d="m7 20 5-5 5 5M7 4l5 5 5-5"/></symbol>
   <symbol id="i-cloud" viewBox="0 0 24 24"><path d="M7 18a4.5 4.5 0 0 1-.6-9A6 6 0 0 1 18 9.5a4.3 4.3 0 0 1-.5 8.5z"/></symbol>
+  <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></symbol>
+  <symbol id="i-unlink" viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1M4 4l16 16"/></symbol>
   <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
   <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></symbol>
 </svg>
@@ -229,6 +238,7 @@ const guessCat=d=>matchCat(d)||'other';
 
 function sample(){
   const P=['Chris','Sam','Alex','Jo'].map((n,i)=>({id:uid(),name:n,c:i,u:now()}));
+  P[0].pair=P[1].id;P[1].pair=P[0].id;P[2].pair=P[3].id;P[3].pair=P[2].id;
   const [c,s,a,j]=P.map(p=>p.id), d=n=>{const x=new Date();x.setDate(x.getDate()-n);return x.toISOString().slice(0,10)};
   const E=[
     ['Tapas dinner',8640,d(0),c,[c,s,a,j]],
@@ -355,10 +365,27 @@ function balances(){
   });
   return b;
 }
+/* Couples: a pair is stored on both people (p.pair) so it syncs like any other edit */
+const partner=id=>{const p=person(id);if(!p.pair)return null;const q=S.people.find(x=>x.id===p.pair&&!x.del);return q&&q.pair===id?q.id:null};
+const hasCouples=()=>people().some(p=>partner(p.id));
+const byCouple=()=>prefs.couples!==false&&hasCouples();
+/* Settling units: a couple counts as one unit when settling by couple, otherwise each person is a unit */
+function units(pair=byCouple()){
+  const seen=new Set(),out=[];
+  people().forEach(p=>{if(seen.has(p.id))return;const q=pair?partner(p.id):null;const ids=q?[p.id,q]:[p.id];ids.forEach(i=>seen.add(i));out.push({ids})});
+  return out;
+}
+const uName=u=>u.ids.map(pname).join(' & ');
+const uAv=(u,cls='')=>u.ids.length>1?`<span class="stack">${u.ids.map(i=>av(i,cls)).join('')}</span>`:av(u.ids[0],cls);
+function plan(){
+  const b=balances();
+  const nets=units().map(u=>({u,paid:u.ids.reduce((s,i)=>s+b[i].paid,0),n:u.ids.reduce((s,i)=>s+b[i].paid-b[i].share,0)}));
+  return {nets,t:settle(nets)};
+}
 /* Fewest transfers: match the largest debtor with the largest creditor */
-function settle(b){
+function settle(nets){
   const cr=[],db=[];
-  for(const id in b){const n=b[id].paid-b[id].share;if(n>0)cr.push([id,n]);else if(n<0)db.push([id,-n])}
+  nets.forEach(x=>{if(x.n>0)cr.push([x.u,x.n]);else if(x.n<0)db.push([x.u,-x.n])});
   const t=[];
   while(cr.length&&db.length){
     cr.sort((x,y)=>y[1]-x[1]);db.sort((x,y)=>y[1]-x[1]);
@@ -368,9 +395,9 @@ function settle(b){
   return t;
 }
 function summary(){
-  const t=settle(balances()),total=expenses().reduce((s,e)=>s+e.amt,0);
+  const {t}=plan(),total=expenses().reduce((s,e)=>s+e.amt,0);
   let s=`*${S.name}* · ${money(total)} total\n\n`;
-  s+=t.length?t.map(([f,to,m])=>`${pname(f)} → ${pname(to)}: *${money(m)}*`).join('\n'):'Everyone is square ✅';
+  s+=t.length?t.map(([f,to,m])=>`${uName(f)} → ${uName(to)}: *${money(m)}*`).join('\n'):'Everyone is square ✅';
   if(syncOn())s+=`\n\n${tripLink()}`;
   return s;
 }
@@ -378,7 +405,7 @@ const fmtDate=d=>{const t=today(),y=new Date(Date.now()-864e5).toISOString().sli
   return d===t?'Today':d===y?'Yesterday':new Date(d+'T12:00').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})};
 
 /* ---- Views ---- */
-let tab='exp',open=null;
+let tab='exp',open=null,linking=null;
 function render(){
   if(document.activeElement!==$('#trip'))$('#trip').value=S.name;
   $('#sample').hidden=!S.sample;
@@ -405,21 +432,36 @@ function rExp(){
   $('#exp').innerHTML=h;
 }
 function rBal(){
-  const b=balances(),t=settle(b);
-  let h='<h2>Who pays who</h2><div class="card">';
-  h+=t.length?t.map(([f,to,m])=>`<div class="row"><span class="flow">${av(f)}<span>${esc(pname(f))}</span>${ico('i-arrow')}${av(to)}<span>${esc(pname(to))}</span></span><span class="amt">${money(m)}</span></div>`).join(''):'<div class="square">Everyone is square</div>';
+  const {nets,t}=plan(),couples=hasCouples(),saved=units(false).length-units(true).length;
+  let h=couples?`<div class="seg" role="group" aria-label="Settle by"><button data-mode="c" aria-pressed="${byCouple()}">Couples</button><button data-mode="p" aria-pressed="${!byCouple()}">Everyone</button></div>`:'';
+  h+='<h2>Who pays who</h2><div class="card">';
+  h+=t.length?t.map(([f,to,m])=>`<div class="row"><span class="flow">${uAv(f)}<span>${esc(uName(f))}</span>${ico('i-arrow')}${uAv(to)}<span>${esc(uName(to))}</span></span><span class="amt">${money(m)}</span></div>`).join(''):'<div class="square">Everyone is square</div>';
   h+='</div><div class="actions"><button class="btn primary" id="copy">'+ico('i-copy')+'Copy</button><a class="btn wa" href="https://wa.me/?text='+encodeURIComponent(summary())+'" target="_blank" rel="noopener">'+ico('i-chat')+'WhatsApp</a></div>';
   h+='<h2>Balances</h2><div class="card">';
-  people().forEach(p=>{const n=b[p.id].paid-b[p.id].share;
-    h+=`<div class="row">${av(p.id)}<span class="main"><div class="t">${esc(p.name)}</div><div class="who">Paid ${money(b[p.id].paid)}</div></span><span class="amt ${n>0?'pos':n<0?'neg':''}">${n>0?'+':''}${money(n)}</span></div>`});
+  nets.forEach(({u,paid,n})=>{
+    h+=`<div class="row">${uAv(u)}<span class="main"><div class="t">${esc(uName(u))}</div><div class="who">Paid ${money(paid)}</div></span><span class="amt ${n>0?'pos':n<0?'neg':''}">${n>0?'+':''}${money(n)}</span></div>`});
   $('#bal').innerHTML=h+'</div>';
 }
 function rPpl(){
   const typed=$('#pname')?.value||'',focused=document.activeElement?.id==='pname';
   let h='<form class="addp" id="pform"><input id="pname" class="field" type="text" placeholder="Add a name" autocomplete="off" aria-label="Name"><button class="btn primary" aria-label="Add">'+ico('i-plus')+'</button></form><p class="msg" id="pmsg"></p>';
-  if(people().length){h+='<div class="card" style="margin-top:12px">';
-    people().forEach(p=>h+=`<div class="row">${av(p.id,'lg')}<span class="main"><div class="t">${esc(p.name)}</div></span><button class="x" data-rm="${p.id}" aria-label="Remove ${esc(p.name)}">${ico('i-x')}</button></div>`);
-    h+='</div>'}
+  if(people().length){
+    const singles=people().filter(p=>!partner(p.id));
+    if(linking&&(!singles.some(p=>p.id===linking)||singles.length<2))linking=null;
+    h+=linking?`<p class="pickhint">Tap ${esc(pname(linking))}'s partner</p>`:'';
+    h+='<div class="card" style="margin-top:12px">';
+    units(true).forEach(u=>{
+      if(u.ids.length>1){
+        h+=`<div class="row">${uAv(u,'lg')}<span class="main"><div class="t">${esc(uName(u))}</div></span><button class="x" data-unpair="${u.ids[0]}" aria-label="Unlink ${esc(uName(u))}">${ico('i-unlink')}</button></div>`;
+      }else{
+        const p=person(u.ids[0]),pick=linking&&linking!==p.id;
+        h+=pick?`<button class="row pickme" data-pairwith="${p.id}">${av(p.id,'lg')}<span class="main"><div class="t">${esc(p.name)}</div></span></button>`
+          :`<div class="row${linking===p.id?' linking':''}">${av(p.id,'lg')}<span class="main"><div class="t">${esc(p.name)}</div></span>${singles.length>1?`<button class="x" data-link="${p.id}" aria-label="Pair ${esc(p.name)} as a couple" aria-pressed="${linking===p.id}">${ico('i-link')}</button>`:''}<button class="x" data-rm="${p.id}" aria-label="Remove ${esc(p.name)}">${ico('i-x')}</button></div>`;
+      }
+    });
+    h+='</div>';
+    if(!hasCouples()&&singles.length>1&&!linking)h+=`<p class="hint">Tap ${ico('i-link','i tiny')} to pair a couple. Couples settle up as one.</p>`;
+  }
   else h+='<p class="empty">Who\'s on the trip?</p>';
   if(syncOn()){
     const msg=`Join *${S.name}* on Holiday Split:\n${tripLink()}`;
@@ -443,10 +485,16 @@ document.addEventListener('click',e=>{
   const dh=e.target.closest('[data-day]');if(dh){const d=dh.dataset.day;open.has(d)?open.delete(d):open.add(d);rExp();return}
   if(e.target.closest('#toggleAll')){const days=[...new Set(expenses().map(x=>x.date))];open=days.every(d=>open.has(d))?new Set():new Set(days);rExp();return}
   const ed=e.target.closest('[data-edit]');if(ed)return openSheet(S.expenses.find(x=>x.id===ed.dataset.edit));
+  const lk=e.target.closest('[data-link]');if(lk){linking=linking===lk.dataset.link?null:lk.dataset.link;rPpl();return}
+  const pw=e.target.closest('[data-pairwith]');
+  if(pw&&linking){const a=person(linking),b=person(pw.dataset.pairwith);a.pair=b.id;b.pair=a.id;a.u=b.u=now();linking=null;save();render();toast(`${a.name} & ${b.name} paired`);return}
+  const up=e.target.closest('[data-unpair]');
+  if(up){const a=person(up.dataset.unpair),b=person(partner(a.id));delete a.pair;delete b.pair;a.u=b.u=now();save();render();return}
+  const md=e.target.closest('[data-mode]');if(md){prefs.couples=md.dataset.mode==='c';savePrefs();rBal();return}
   const rm=e.target.closest('[data-rm]');
   if(rm){const id=rm.dataset.rm,n=expenses().filter(x=>x.paidBy===id||x.for.includes(id)).length;
     if(n){$('#pmsg').textContent=`${pname(id)} is in ${n} expense${n>1?'s':''}. Remove those first.`;return}
-    const p=S.people.find(x=>x.id===id);p.del=true;p.u=now();save();render();return}
+    const p=S.people.find(x=>x.id===id),q=partner(id);if(q){const o=person(q);delete o.pair;o.u=now()}delete p.pair;p.del=true;p.u=now();save();render();return}
   if(e.target.closest('#copy'))copy(summary(),'Copied');
   if(e.target.closest('#copyLink'))copy(tripLink(),'Link copied');
 });
