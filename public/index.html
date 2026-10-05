@@ -111,7 +111,14 @@ h2{font:600 .78rem var(--body);text-transform:uppercase;letter-spacing:.08em;col
 .sheet>*{flex-shrink:0}
 @supports (height:1dvh){.sheet{max-height:94dvh}}
 .sh{display:flex;align-items:center;justify-content:space-between;gap:10px}
-.sh h3{margin:0;font:700 1.25rem var(--display)}
+.sh h3{margin:0;font:700 1.25rem var(--display);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sh>.iconbtn:first-child{background:var(--card);margin-left:-4px}
+.sh>.iconbtn:last-child:not(:first-child){background:var(--card)}
+.daterow{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:.78rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600}
+.daterow input{border:0;background:var(--card);border-radius:10px;padding:8px 10px;font:500 .95rem var(--body);color:var(--fg);text-transform:none;letter-spacing:0}
+.grab{width:40px;height:5px;border-radius:3px;background:var(--line);margin:-8px auto -4px;flex:none}
+.grab,.sh{touch-action:none}
+.scrim,.sheet{overscroll-behavior:contain}
 .sh input{border:0;background:var(--card);border-radius:10px;padding:7px 9px;font-size:.9rem}
 .big{font:700 2rem var(--display)!important;text-align:center;padding:14px!important}
 .descrow{display:flex;gap:8px;position:relative}
@@ -264,6 +271,7 @@ svg.i.tiny{width:14px;height:14px;vertical-align:-2px}
   <symbol id="i-pay" viewBox="0 0 24 24"><path d="M4 8h14l-3-3M20 16H6l3 3"/></symbol>
   <symbol id="i-cam" viewBox="0 0 24 24"><path d="M4 8a1 1 0 0 1 1-1h2.5l1.5-2h6l1.5 2H19a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"/><circle cx="12" cy="13" r="3.5"/></symbol>
   <symbol id="i-dl" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
   <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
   <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></symbol>
 </svg>
@@ -500,10 +508,10 @@ function restoreTrip(id){
   render();toast(`Restored ${S.name}`);
 }
 function openDelete(){
-  const sc=$('#scrim');sc.hidden=false;
+  const sc=openScrim();
   const shared=!S.sample&&syncOn();
   sc.innerHTML=`<div class="sheet" role="dialog" aria-label="Delete trip">
-    <div class="sh"><h3>Delete “${esc(S.name)}”?</h3><button class="iconbtn" id="dclose" aria-label="Cancel">${ico('i-x')}</button></div>
+    <div class="sh"><button class="iconbtn" id="dclose" aria-label="Cancel">${ico('i-down')}</button><h3>Delete “${esc(S.name)}”?</h3></div>
     <div class="set">
       <div class="col"><label>Remove from this phone<small>${shared?'The group keeps it. ':''}You can restore it from Settings for 30 days${shared?', or open the invite link again':''}.</small></label>
         <button class="btn" id="dlocal">Remove from this phone</button></div>
@@ -799,7 +807,7 @@ function openSheet(ex){
   const f={cat:ex?.cat||null,catSet:!!ex,menu:false,ccMenu:false,cc:ex?.cc||S.cur,
     paidBy:ex?.paidBy||(isNew&&me())||lastPayer,for:new Set(ex?.for||P.map(p=>p.id)),
     photo:ex?.photo||0,newPhoto:null};
-  const sc=$('#scrim');sc.hidden=false;
+  const sc=openScrim();
   const pa=(p,on,attr)=>`<button type="button" class="pa" data-${attr}="${p.id}" aria-pressed="${on}" aria-label="${esc(p.name)}">${av(p.id,'lg')}<span class="pn">${esc(first(p.name))}</span></button>`;
   const foreign=()=>f.cc!==S.cur;
   const draw=()=>{
@@ -829,12 +837,13 @@ function openSheet(ex){
     if(has){const img=$('#thumbImg');if(f.newPhoto)img.src=f.newPhoto;else photoURL(ex.id,f.photo,ex.pe).then(u=>{img.src=u}).catch(()=>{img.alt='Receipt needs signal'})}
   };
   sc.innerHTML=`<form class="sheet" id="eform" role="dialog" aria-label="${isNew?'Add':'Edit'} expense">
-    <div class="sh"><h3>${isNew?'New expense':'Edit expense'}</h3><div class="shr"><button type="button" class="iconbtn" id="camBtn" aria-label="Add receipt photo">${ico('i-cam')}</button><input id="fdate" type="date" value="${ex?.date||today()}" aria-label="Date"></div></div>
+    <div class="sh"><button type="button" class="iconbtn" data-dismiss aria-label="Close">${ico('i-down')}</button><h3>${isNew?'New expense':'Edit expense'}</h3><button type="button" class="iconbtn" id="camBtn" aria-label="Add receipt photo">${ico('i-cam')}</button></div>
     <input id="fphoto" type="file" accept="image/*" hidden>
     <div class="thumbrow" id="photoArea" hidden></div>
     <div class="amtrow"><button type="button" class="ccbtn" id="ccbtn" aria-label="Currency" aria-haspopup="true"></button><input id="famt" class="field big" inputmode="decimal" value="${ex?((ex.cc?ex.oamt:ex.amt)/100).toFixed(2):''}" autocomplete="off" aria-label="Amount"><div class="ccmenu" id="ccmenu" hidden></div></div>
     <div class="raterow" id="raterow" hidden><span id="rlab"></span><input id="frate" class="field" inputmode="decimal" value="${ex?.rate||lastRate(f.cc)}" autocomplete="off" aria-label="Exchange rate"><span class="conv" id="conv"></span></div>
     <div class="descrow"><input id="fdesc" class="field" type="text" placeholder="What for?" value="${esc(ex?.desc||'')}" autocomplete="off" aria-label="Description"><button type="button" class="catbtn" id="catbtn" aria-label="Choose icon" aria-haspopup="true"></button><div class="catmenu" id="catmenu" hidden></div></div>
+    <div class="daterow"><label for="fdate">Date</label><input id="fdate" type="date" value="${ex?.date||today()}"></div>
     <div class="lbl"><span>Paid by<em id="paidName"></em></span></div><div class="pick" id="paidChips"></div>
     <div class="lbl"><span>Split<em id="forName"></em></span><button type="button" id="allBtn"></button></div><div class="pick" id="forChips"></div>
     <div class="each" id="each"></div>
@@ -842,7 +851,7 @@ function openSheet(ex){
     <div class="foot">${isNew?'':'<button type="button" class="btn danger" id="del">Delete</button>'}<button class="btn primary">${isNew?'Add':'Save'}</button></div>
     ${ex?.by?`<p class="by">Added by ${esc(pname(ex.by))}</p>`:''}
   </form>`;
-  draw();if(isNew)setTimeout(()=>$('#famt').focus(),60);
+  draw();if(isNew)setTimeout(()=>$('#famt')?.focus(),60);
   sc.onclick=e=>{
     if(e.target===sc)return close();
     if(e.target.closest('#catbtn')){f.menu=!f.menu;f.ccMenu=false;draw();return}
@@ -889,14 +898,15 @@ function openPay(ex,pre){
   const P=people(),isNew=!ex;
   const f={from:ex?.paidBy||pre?.from||me()||P[0].id};
   f.to=ex?.for[0]||pre?.to||(P.find(p=>p.id!==f.from)||P[0]).id;
-  const sc=$('#scrim');sc.hidden=false;
+  const sc=openScrim();
   const draw=()=>{
     $('#fromChips').innerHTML=pickRow('pfrom',f.from);$('#toChips').innerHTML=pickRow('pto',f.to);
     $('#fromName').textContent=pname(f.from);$('#toName').textContent=pname(f.to);
   };
   sc.innerHTML=`<form class="sheet" id="pform2" role="dialog" aria-label="${isNew?'Record':'Edit'} payment">
-    <div class="sh"><h3>${isNew?'Record payment':'Edit payment'}</h3><input id="pdate" type="date" value="${ex?.date||today()}" aria-label="Date"></div>
+    <div class="sh"><button type="button" class="iconbtn" data-dismiss aria-label="Close">${ico('i-down')}</button><h3>${isNew?'Record payment':'Edit payment'}</h3></div>
     <input id="pamt" class="field big" inputmode="decimal" placeholder="${esc(S.cur)}0.00" value="${ex?(ex.amt/100).toFixed(2):pre?(pre.amt/100).toFixed(2):''}" autocomplete="off" aria-label="Amount">
+    <div class="daterow"><label for="pdate">Date</label><input id="pdate" type="date" value="${ex?.date||today()}"></div>
     <div class="lbl"><span>From<em id="fromName"></em></span></div><div id="fromChips"></div>
     <div class="lbl"><span>To<em id="toName"></em></span></div><div id="toChips"></div>
     <p class="msg" id="pmsg2"></p>
@@ -979,13 +989,13 @@ function exportCsv(){
 }
 
 function openSettings(){
-  const sc=$('#scrim');sc.hidden=false;
+  const sc=openScrim();
   const status=!syncAvail?'Sync works in the hosted app only':S.sample?'The example trip isn\'t synced':({ok:'Synced',sync:'Syncing…',offline:'Offline. Changes sync when you\'re back online.'}[$('#cloud').dataset.s]||'')+(S.key?' · encrypted':'');
   const live=prefs.trips.filter(t=>!goneAt(t)),gone=prefs.trips.filter(t=>goneAt(t)&&t.id!==S.id);
   const trips=live.map(t=>`<button class="trip" data-trip="${esc(t.id)}"><span>${esc(t.id===S.id?S.name:t.name)}</span>${t.id===S.id?ico('i-check'):''}</button>`).join('')+(S.del?`<button class="trip" data-trip="${esc(S.id)}"><span>${esc(S.name)} (deleted)</span>${ico('i-check')}</button>`:'');
   const deleted=gone.map(t=>`<div><label>${esc(t.name)}<small>${t.del?'Deleted for everyone':'Removed from this phone'} · ${daysLeft(t)} day${daysLeft(t)===1?'':'s'} left</small></label><button class="btn primary" data-restore="${esc(t.id)}">Restore</button></div>`).join('');
   sc.innerHTML=`<div class="sheet" role="dialog" aria-label="Settings">
-    <div class="sh"><h3>Settings</h3><button class="iconbtn" id="sclose" aria-label="Close">${ico('i-x')}</button></div>
+    <div class="sh"><button class="iconbtn" id="sclose" aria-label="Close">${ico('i-down')}</button><h3>Settings</h3></div>
     ${people().length?`<div class="set"><div class="col"><label>You are<small>Shows what you owe and are owed on this phone</small></label>${pickRow('me',me())}</div></div>`:''}
     <div class="set">
       <div><label for="scur">Trip currency</label><input id="scur" class="field cur" type="text" maxlength="3" value="${esc(S.cur)}"></div>
@@ -1036,7 +1046,36 @@ function importData(txt){
   toast(added?`Imported ${added} expense${added>1?'s':''}`:'Nothing new to import');
   return true;
 }
-function close(){const sc=$('#scrim');sc.hidden=true;sc.innerHTML=''}
+/* ---- Sheets: close with the arrow, a swipe down on the top bar, the phone's back gesture, Esc, or a tap outside ---- */
+let popIgnoreUntil=0;
+function openScrim(){
+  const sc=$('#scrim');
+  if(sc.hidden){sc.hidden=false;try{history.pushState({sheet:1},'')}catch(e){}}
+  return sc;
+}
+function close(){
+  const sc=$('#scrim');if(sc.hidden)return;
+  sc.hidden=true;sc.innerHTML='';
+  /* step back over the entry we added; its popstate arrives shortly after and must not close a sheet opened meanwhile */
+  if(history.state&&history.state.sheet){popIgnoreUntil=Date.now()+400;history.back()}
+}
+window.addEventListener('popstate',()=>{
+  if(Date.now()<popIgnoreUntil)return;
+  const sc=$('#scrim');if(!sc.hidden){sc.hidden=true;sc.innerHTML=''}  /* back gesture */
+});
+function enhanceSheet(sh){
+  if(sh.dataset.enh)return;sh.dataset.enh=1;
+  const g=document.createElement('div');g.className='grab';g.setAttribute('aria-hidden','true');sh.prepend(g);
+  let y0=null,dy=0,t0=0;
+  const inZone=e=>e.target.closest('.grab,.sh')&&!e.target.closest('input,select,textarea');
+  sh.addEventListener('touchstart',e=>{if(sh.scrollTop>0||!inZone(e))return;y0=e.touches[0].clientY;dy=0;t0=Date.now();sh.style.transition='none'},{passive:true});
+  sh.addEventListener('touchmove',e=>{if(y0==null)return;dy=Math.max(0,e.touches[0].clientY-y0);sh.style.transform=dy?`translateY(${dy}px)`:''},{passive:true});
+  const end=()=>{if(y0==null)return;y0=null;const v=dy/Math.max(1,Date.now()-t0);sh.style.transition='transform .2s ease';
+    if(dy>90||(dy>30&&v>0.6)){sh.style.transform='translateY(100%)';setTimeout(close,180)}else sh.style.transform=''};
+  sh.addEventListener('touchend',end);sh.addEventListener('touchcancel',end);
+}
+new MutationObserver(()=>{const sh=$('#scrim .sheet');if(sh)enhanceSheet(sh)}).observe($('#scrim'),{childList:true});
+document.addEventListener('click',e=>{if(e.target.closest('[data-dismiss]'))close()});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('#scrim').hidden)close()});
 window.addEventListener('hashchange',checkHash);
 /* offline: register the service worker on the hosted app only */

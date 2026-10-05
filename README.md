@@ -6,7 +6,7 @@ wrangler.jsonc     config: static assets + KV namespace "TRIPS"
 
 ## Tests
 npm install
-npm test      (30 tests: split maths, settling, couples, payments, currencies, amount entry, dates, worker sync, photos, link reset, encryption, delete and restore)
+npm test      (35 tests: split maths, settling, couples, payments, currencies, amount entry, dates, worker sync, photos, link reset, encryption, delete and restore, closing screens)
 
 ## Deploy (one time)
 1. npx wrangler login
