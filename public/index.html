@@ -191,6 +191,25 @@ svg.i.tiny{width:14px;height:14px;vertical-align:-2px}
 .mine{font-size:.75rem;font-weight:600;white-space:nowrap}
 .mine.none{color:var(--muted);font-weight:500}
 .orig{margin-left:4px}
+.srow{flex-wrap:wrap;row-gap:8px}
+.acts{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;flex:1 0 100%}
+a.paidbtn{text-decoration:none;display:inline-block}
+.paybtn{border:0;background:var(--accent);color:#fff;border-radius:999px;padding:4px 14px;font-size:.8rem;font-weight:700}
+.nudge{display:flex;align-items:center;gap:10px;background:var(--soft);color:var(--soft-ink);border-radius:14px;padding:10px 10px 10px 14px;margin-top:14px;font-size:.9rem;font-weight:500}
+.nudge span{flex:1}.nudge .btn{padding:8px 14px}
+.payamt{display:flex;align-items:center;justify-content:center;gap:8px;font:700 2rem var(--display)}
+.payopts{display:flex;flex-direction:column;gap:8px}
+.payopt{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--card);border-radius:14px;padding:12px 14px;color:var(--fg);text-decoration:none}
+.payopt span{display:flex;flex-direction:column;gap:2px}.payopt small{color:var(--muted);font-size:.8rem}
+.payopt svg.i{color:var(--muted)}
+.bankbox{background:var(--card);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+.copyrow{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.copyrow span{display:flex;flex-direction:column;font-weight:600;min-width:0;overflow-wrap:anywhere}.copyrow small{color:var(--muted);font-weight:500;font-size:.75rem}
+.copy{border:0;background:var(--tile);color:var(--fg);border-radius:10px;width:38px;height:38px;display:grid;place-items:center;flex:none}
+.askpay{color:var(--muted);text-align:center;margin:0}
+.f2{display:flex;flex-direction:column;gap:6px;font-size:.78rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600}
+.f2 .field{text-transform:none;letter-spacing:0;font-size:1rem;color:var(--fg);font-weight:400}
+.two2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .paidtoggle{border:0;background:var(--wa);color:var(--wa-ink);border-radius:999px;padding:4px 10px 4px 8px;font-size:.78rem;font-weight:700;display:inline-flex;align-items:center;gap:4px}
 .paidtoggle svg.i{stroke-width:2.6}
 .paidbtn{border:1.5px solid var(--line);background:transparent;color:var(--fg);border-radius:999px;padding:3px 10px;font-size:.78rem;font-weight:700}
@@ -482,6 +501,126 @@ async function resetLink(){
     toast(before.key?'New link ready. Send it to the group.':'Trip encrypted. Send the new link to the group.');tab='ppl';render();
   }catch(e){S=before;toast('Couldn\'t do that. Check your connection and try again.')}
 }
+/* ---- Paying people: payment links and bank details, no bank linking ----
+   Each person can store Monzo / Revolut / Starling handles and UK bank details (synced, and encrypted with the trip). */
+const PAY_SITES={monzo:'monzo.me',revolut:'revolut.me',starling:'settleup.starlingbank.com'};
+const PAY_NAMES={monzo:'Monzo',revolut:'Revolut',starling:'Starling'};
+const HANDLE=/^[A-Za-z0-9._-]{2,40}$/;
+/* accepts "chris", "@chris" or a pasted link like https://monzo.me/chris/5 ; '' = empty, null = not valid */
+function parseHandle(v,site){
+  v=String(v||'').trim();if(!v)return '';
+  const i=v.toLowerCase().indexOf(site+'/');if(i>=0)v=v.slice(i+site.length+1).split(/[/?#\s]/)[0];
+  v=v.replace(/^@/,'');return HANDLE.test(v)?v:null;
+}
+const digits=v=>String(v||'').replace(/\D/g,'');
+const fmtSort=v=>{const d=digits(v);return d.length===6?`${d.slice(0,2)}-${d.slice(2,4)}-${d.slice(4)}`:''};
+const hasPay=p=>!!(p&&p.pay&&Object.values(p.pay).some(Boolean));
+const bankRef=payer=>`${S.name} ${first(pname(payer))}`.replace(/[^A-Za-z0-9 &.-]/g,'').trim().slice(0,18);   /* UK references max 18 chars */
+/* the link for one service; Monzo is sterling-only, so the amount is only filled in on a £ trip */
+function payLink(k,h,amt,payer){
+  if(k==='monzo')return `https://monzo.me/${encodeURIComponent(h)}`+(S.cur==='£'?`/${(amt/100).toFixed(2)}?d=${encodeURIComponent(bankRef(payer))}`:'');
+  return `https://${PAY_SITES[k]}/${encodeURIComponent(h)}`;
+}
+const payee=u=>u.ids.map(person).find(hasPay)||person(u.ids[0]);
+const payerOf=u=>{const m=me();return u.ids.includes(m)?m:u.ids[0]};
+function rowActs(f,to,amt,i){
+  const m=me(),pays=m&&f.ids.includes(m),owed=m&&to.ids.includes(m);
+  if(pays)return `<button class="paybtn" data-pay-i="${i}">Pay</button>`;
+  if(owed)return `<a class="paidbtn" data-remind href="https://wa.me/?text=${encodeURIComponent(remindText(f,to,amt))}" target="_blank" rel="noopener">Remind</a><button class="paidbtn" data-settle="${i}">Mark paid</button>`;
+  return (!m&&hasPay(payee(to))?`<button class="paybtn" data-pay-i="${i}">Pay</button>`:'')+`<button class="paidbtn" data-settle="${i}">Mark paid</button>`;
+}
+function payLines(p,amt,payer){
+  const d=(p&&p.pay)||{},out=[];
+  ['monzo','revolut','starling'].forEach(k=>{if(d[k])out.push(`${PAY_NAMES[k]}: ${payLink(k,d[k],amt,payer)}`)});
+  if(d.sort&&d.acct)out.push(`Bank: ${d.bname?d.bname+', ':''}sort code ${fmtSort(d.sort)}, account ${d.acct}, reference "${bankRef(payer)}"`);
+  return out;
+}
+function remindText(f,to,amt){
+  const p=payee(to),payer=payerOf(f),us=to.ids.length>1?'us':'me';
+  const lines=payLines(p,amt,payer);
+  return `Hi ${uName(f)}, a reminder from ${S.name}: you owe ${us} ${money(amt)}.`+(lines.length?`\n\n${lines.join('\n')}`:'')+(syncOn()?`\n\n${tripLink()}`:'');
+}
+/* "Did you pay?" — remembered when you leave for a payment app, asked when you come back */
+let pendingPay=null;
+try{pendingPay=JSON.parse(localStorage.getItem('hs-pending-pay'))}catch(e){}
+function setPending(v){pendingPay=v;try{v?localStorage.setItem('hs-pending-pay',JSON.stringify(v)):localStorage.removeItem('hs-pending-pay')}catch(e){}}
+function checkPending(){
+  const p=pendingPay;if(!p||document.hidden)return;
+  if(p.trip!==S.id||now()-p.at<1500||now()-p.at>30*60e3){if(now()-p.at>30*60e3)setPending(null);return}
+  setPending(null);close();
+  const sc=openScrim();
+  sc.innerHTML=`<div class="sheet" role="dialog" aria-label="Did you pay?">
+    <div class="sh"><button type="button" class="iconbtn" data-dismiss aria-label="Close">${ico('i-down')}</button><h3>Did you pay ${esc(pname(p.to))}?</h3></div>
+    <p class="askpay">${money(p.amt)} from ${esc(pname(p.from))} to ${esc(pname(p.to))}</p>
+    <div class="foot"><button class="btn" data-dismiss>Not yet</button><button class="btn primary" id="yesPaid">Yes, mark as paid</button></div>
+  </div>`;
+  $('#yesPaid').onclick=()=>{close();addPayment(p.from,p.to,p.amt)};
+}
+/* back from the payment app: tab shown again, window focused, page restored, or the app restarted (checked at start-up) */
+document.addEventListener('visibilitychange',checkPending);
+window.addEventListener('focus',checkPending);
+window.addEventListener('pageshow',e=>{if(e.persisted)checkPending()});
+function addPayment(from,to,amt){
+  const p={id:uid(),by:me()||null,type:'pay',desc:'Payment',amt,date:today(),paidBy:from,for:[to],cat:'other',u:now()};
+  S.expenses.push(p);open?.add(p.date);save();render();
+  toast(`Marked as paid to ${pname(to)}`,{label:'Undo',fn:()=>{p.del=true;p.u=now();save();render();toast('Payment removed')}});
+}
+function openPayTo(f,to,amt){
+  const p=payee(to),payer=payerOf(f),d=(p&&p.pay)||{},sterling=S.cur==='£';
+  const sc=openScrim();
+  const copyBtn=(v,label)=>`<button type="button" class="copy" data-copy="${esc(v)}" aria-label="Copy ${label}">${ico('i-copy')}</button>`;
+  const hints={monzo:sterling?`Opens Monzo with ${money(amt)} filled in`:`Opens Monzo. Monzo pays in £, so enter the £ amount`,
+    revolut:`Opens Revolut. Enter ${money(amt)}`,starling:`Pay by UK debit card. Enter ${money(amt)}`};
+  const opts=['monzo','revolut','starling'].filter(k=>d[k]).map(k=>`<a class="payopt" data-go href="${esc(payLink(k,d[k],amt,payer))}" target="_blank" rel="noopener"><span><b>${PAY_NAMES[k]}</b><small>${hints[k]}</small></span>${ico('i-chev')}</a>`).join('');
+  const bank=d.sort&&d.acct?`<div class="bankbox"><b>Bank transfer</b>
+      ${d.bname?`<div class="copyrow"><span><small>Name</small>${esc(d.bname)}</span>${copyBtn(d.bname,'name')}</div>`:''}
+      <div class="copyrow"><span><small>Sort code</small>${fmtSort(d.sort)}</span>${copyBtn(digits(d.sort),'sort code')}</div>
+      <div class="copyrow"><span><small>Account</small>${esc(d.acct)}</span>${copyBtn(d.acct,'account number')}</div>
+      <div class="copyrow"><span><small>Reference</small>${esc(bankRef(payer))}</span>${copyBtn(bankRef(payer),'reference')}</div></div>`:'';
+  const none=!opts&&!bank;
+  const ask=`Hi ${first(p.name)}, how should I pay you the ${money(amt)} for ${S.name}? You can add Monzo, Revolut, Starling or bank details in the app under Settings, Payment details.`;
+  sc.innerHTML=`<div class="sheet" role="dialog" aria-label="Pay ${esc(p.name)}">
+    <div class="sh"><button type="button" class="iconbtn" data-dismiss aria-label="Close">${ico('i-down')}</button><h3>Pay ${esc(p.name)}</h3></div>
+    <div class="payamt"><span>${money(amt)}</span>${copyBtn((amt/100).toFixed(2),'amount')}</div>
+    ${none?`<p class="askpay">${esc(first(p.name))} hasn't added payment details yet.</p>
+      <div class="invite"><button class="btn primary" data-paydetails="${p.id}">Add their details</button><a class="btn wa" href="https://wa.me/?text=${encodeURIComponent(ask)}" target="_blank" rel="noopener">${ico('i-chat')}Ask</a></div>`
+      :`<div class="payopts">${opts}</div>${bank}`}
+    <button class="btn primary" id="iPaid">I've paid</button>
+  </div>`;
+  sc.onclick=e=>{
+    if(e.target===sc)return close();
+    if(e.target.closest('[data-go]'))setPending({trip:S.id,from:payer,to:p.id,amt,at:now()});
+    const c=e.target.closest('[data-copy]');
+    if(c){copy(c.dataset.copy,'Copied');if(bank)setPending({trip:S.id,from:payer,to:p.id,amt,at:now()})}
+    if(e.target.closest('#iPaid')){setPending(null);close();addPayment(payer,p.id,amt)}
+  };
+}
+function openPayDetails(id){
+  const p=person(id),d=p.pay||{},sc=openScrim();
+  sc.innerHTML=`<form class="sheet" id="pdform" role="dialog" aria-label="Payment details">
+    <div class="sh"><button type="button" class="iconbtn" data-dismiss aria-label="Close">${ico('i-down')}</button><h3>Payment details</h3></div>
+    ${pickRow('pdp',id)}
+    <p class="hint" style="text-align:left;margin:0">${S.key?'Only people with this trip\'s link can see these.':'This trip isn\'t encrypted. Encrypt it in Settings before adding bank details.'} Add any you use.</p>
+    <label class="f2">Monzo<input id="pd_monzo" class="field" placeholder="monzo.me/yourname" value="${esc(d.monzo||'')}" autocomplete="off" autocapitalize="off"></label>
+    <label class="f2">Revolut<input id="pd_revolut" class="field" placeholder="revolut.me/yourname" value="${esc(d.revolut||'')}" autocomplete="off" autocapitalize="off"></label>
+    <label class="f2">Starling Settle Up<input id="pd_starling" class="field" placeholder="settleup.starlingbank.com/yourname" value="${esc(d.starling||'')}" autocomplete="off" autocapitalize="off"></label>
+    <label class="f2">Name on bank account<input id="pd_bname" class="field" value="${esc(d.bname||'')}" autocomplete="off"></label>
+    <div class="two2"><label class="f2">Sort code<input id="pd_sort" class="field" inputmode="numeric" placeholder="12-34-56" value="${esc(fmtSort(d.sort)||d.sort||'')}" autocomplete="off"></label>
+      <label class="f2">Account number<input id="pd_acct" class="field" inputmode="numeric" placeholder="12345678" value="${esc(d.acct||'')}" autocomplete="off"></label></div>
+    <p class="msg" id="pdmsg"></p>
+    <button class="btn primary">Save</button>
+  </form>`;
+  sc.onclick=e=>{if(e.target===sc)return close();const s=e.target.closest('[data-pdp]');if(s&&s.dataset.pdp!==id)openPayDetails(s.dataset.pdp)};
+  $('#pdform').onsubmit=e=>{e.preventDefault();
+    const out={},err=m=>{$('#pdmsg').textContent=m;return false};
+    for(const k of ['monzo','revolut','starling']){const v=parseHandle($('#pd_'+k).value,PAY_SITES[k]);if(v===null)return err(`That ${PAY_NAMES[k]} name doesn't look right. Paste your ${PAY_SITES[k]} link or just the name.`);if(v)out[k]=v}
+    const sort=digits($('#pd_sort').value),acct=digits($('#pd_acct').value),bname=$('#pd_bname').value.trim();
+    if(sort||acct){if(sort.length!==6)return err('A sort code has 6 digits.');if(acct.length!==8)return err('A UK account number has 8 digits.');out.sort=sort;out.acct=acct}
+    if(bname)out.bname=bname.slice(0,60);
+    p.pay=out;p.u=now();save();close();render();toast(hasPay(p)?`Saved ${first(p.name)}'s payment details`:'Payment details cleared');
+  };
+}
+
 /* ---- Delete & restore ---- */
 const waitIdle=async()=>{for(let i=0;i<100&&syncing;i++)await new Promise(r=>setTimeout(r,50))};
 function leaveTo(){const t=firstLive();switchTo(t?loadTrip(t.id):fix(sample()))}
@@ -702,8 +841,12 @@ function rBal(){
   const {nets,t}=plan(),couples=hasCouples();lastT=t;
   let h=couples?`<div class="seg" role="group" aria-label="Settle by"><button data-mode="c" aria-pressed="${byCouple()}">Couples</button><button data-mode="p" aria-pressed="${!byCouple()}">Everyone</button></div>`:'';
   h+='<h2>Who pays who</h2><div class="card">';
-  h+=t.length?t.map(([f,to,m],i)=>`<div class="row"><span class="flow">${uAv(f)}<span>${esc(uName(f))}</span>${ico('i-arrow')}${uAv(to)}<span>${esc(uName(to))}</span></span><span class="rt"><span class="amt">${money(m)}</span><button class="paidbtn" data-settle="${i}">Mark paid</button></span></div>`).join(''):'<div class="square">Everyone is square</div>';
+  h+=t.length?t.map(([f,to,m],i)=>`<div class="row srow"><span class="flow">${uAv(f)}<span>${esc(uName(f))}</span>${ico('i-arrow')}${uAv(to)}<span>${esc(uName(to))}</span></span><span class="amt">${money(m)}</span><span class="acts">${rowActs(f,to,m,i)}</span></div>`).join(''):'<div class="square">Everyone is square</div>';
   h+='</div><div class="actions"><button class="btn primary" id="copy">'+ico('i-copy')+'Copy</button><a class="btn wa" href="https://wa.me/?text='+encodeURIComponent(summary())+'" target="_blank" rel="noopener">'+ico('i-chat')+'WhatsApp</a></div>';
+  /* nudge: you're owed money but haven't said how to be paid */
+  const m0=me();
+  if(m0&&!hasPay(person(m0))&&t.some(x=>x[1].ids.includes(m0)))
+    h+=`<div class="nudge"><span>Add your payment details so the group can pay you in one tap.</span><button class="btn primary" data-paydetails="${m0}">Add</button></div>`;
   /* recorded payments: tap the ✓ to mark as not paid (Undo puts it back) */
   const pays=expenses().filter(isPay);
   if(pays.length)h+='<h2>Paid</h2><div class="card">'+pays.map(e=>`<div class="row"><span class="flow">${av(e.paidBy)}<span>${esc(pname(e.paidBy))}</span>${ico('i-arrow')}${av(e.for[0])}<span>${esc(pname(e.for[0]))}</span></span><span class="rt"><span class="amt">${money(e.amt)}</span><button class="paidtoggle" data-unpay="${e.id}" aria-pressed="true" aria-label="Paid. Tap to mark as not paid">${ico('i-check','i tiny')}Paid</button></span></div>`).join('')+'</div>';
@@ -780,6 +923,9 @@ document.addEventListener('click',e=>{
   const py=e.target.closest('[data-pay]');if(py)return openPay(S.expenses.find(x=>x.id===py.dataset.pay));
   const mm=e.target.closest('[data-me]');if(mm){setMe(mm.dataset.me);render();if($('#scrim [data-me]'))openSettings();return}
   const gt=e.target.closest('[data-goto]');if(gt){tab=gt.dataset.goto;render();scrollTo(0,0);return}
+  const pb=e.target.closest('[data-pay-i]');if(pb){const x=lastT[+pb.dataset.payI];if(x)openPayTo(x[0],x[1],x[2]);return}
+  const pdd=e.target.closest('[data-paydetails]');if(pdd){openPayDetails(pdd.dataset.paydetails);return}
+  const rmd=e.target.closest('[data-remind]');if(rmd){pendingPay=null;return}
   const up2=e.target.closest('[data-unpay]');
   if(up2){const p=S.expenses.find(x=>x.id===up2.dataset.unpay);if(p){p.del=true;p.u=now();save();render();
     toast('Marked as not paid',{label:'Undo',fn:()=>{p.del=false;p.u=now();save();render();toast('Marked as paid')}})}return}
@@ -1012,6 +1158,7 @@ function openSettings(){
         :`<div><label>Encryption<small>Encrypt this trip so only people with the link can read it. Everyone will need the new link.</small></label><button class="btn primary" id="sreset">Encrypt</button></div>`):''}
       <div><label for="ssync">Sync with group<small class="status">${status}</small></label><input id="ssync" class="sw" type="checkbox" role="switch" ${prefs.sync?'checked':''} ${syncAvail?'':'disabled'}></div>
     </div>
+    ${people().length?`<div class="set"><div><label>Payment details<small>How the group pays you: Monzo, Revolut, Starling or bank</small></label><button class="btn primary" data-paydetails="${me()||people()[0].id}">Edit</button></div></div>`:''}
     <div class="set"><div class="col"><label for="simp">Import expenses<small>Paste import text into this trip</small></label>
       <textarea id="simp" class="field" rows="3" placeholder="Paste here" autocomplete="off"></textarea>
       <button class="btn primary" id="simpgo">Import</button></div></div>
@@ -1089,7 +1236,7 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('#scrim').hidden
 window.addEventListener('hashchange',checkHash);
 /* offline: register the service worker on the hosted app only */
 ready.then(()=>{if(syncAvail&&'serviceWorker' in navigator)navigator.serviceWorker.register('/sw.js').catch(()=>{})});
-render();checkHash();
+render();checkHash();setTimeout(checkPending,300);
 </script>
 </body>
 </html>
