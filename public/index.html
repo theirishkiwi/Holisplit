@@ -116,9 +116,13 @@ h2{font:600 .78rem var(--body);text-transform:uppercase;letter-spacing:.08em;col
 .catmenu{position:absolute;right:0;top:calc(100% + 6px);background:var(--card);border-radius:16px;box-shadow:0 12px 32px rgb(10 14 30 / .2);padding:8px;display:grid;grid-template-columns:repeat(4,46px);gap:6px;z-index:5}
 .cat{border:2px solid transparent;border-radius:12px;width:46px;height:46px;display:grid;place-items:center;color:#3a4052}
 .cat[aria-pressed="true"]{border-color:var(--accent)}
-.pick{display:flex;gap:12px;overflow-x:auto;padding:6px 4px;scrollbar-width:none}
-.pa{border:0;background:none;padding:0;border-radius:50%;flex:none;opacity:.32;filter:saturate(.5);transition:opacity .12s}
-.pa[aria-pressed="true"]{opacity:1;filter:none;box-shadow:0 0 0 3px var(--bg),0 0 0 5px var(--accent)}
+.pick{display:flex;gap:8px;overflow-x:auto;padding:8px 4px 2px;scrollbar-width:none}
+.pa{border:0;background:none;padding:0;flex:none;width:56px;display:flex;flex-direction:column;align-items:center;gap:6px;opacity:.38;filter:saturate(.5);transition:opacity .12s}
+.pa .av{border-radius:50%}
+.pa[aria-pressed="true"]{opacity:1;filter:none}
+.pa[aria-pressed="true"] .av{box-shadow:0 0 0 3px var(--bg),0 0 0 5px var(--accent)}
+.pn{font-size:.75rem;font-weight:600;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.av.two{font-size:calc(var(--s)*.38);letter-spacing:-.02em}
 .lbl em{font-style:normal;color:var(--fg);text-transform:none;letter-spacing:0;font-size:.9rem;margin-left:6px}
 .lbl{display:flex;justify-content:space-between;align-items:center;font-size:.78rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600;margin-bottom:-6px}
 .lbl button{background:none;border:0;color:var(--accent);font-weight:700;font-size:.78rem;letter-spacing:.08em;text-transform:uppercase;padding:2px}
@@ -345,7 +349,13 @@ const people=()=>S.people.filter(p=>!p.del);
 const expenses=()=>S.expenses.filter(e=>!e.del).sort((a,b)=>b.date.localeCompare(a.date)||b.u-a.u);
 const person=id=>S.people.find(p=>p.id===id)||{name:'?',c:0};
 const pname=id=>person(id).name;
-const av=(id,cls='')=>{const p=person(id);return `<span class="av ${cls}" style="background:${COLORS[p.c%COLORS.length]}" title="${esc(p.name)}">${esc((p.name[0]||'?').toUpperCase())}</span>`};
+/* Initials: one letter, or two when another person shares the first letter (Sam/Sophie → Sa/So, Sam Lee/Sam Roe → SL/SR) */
+function initials(id){
+  const n=person(id).name.trim(),parts=n.split(/\s+/),up=x=>(x||'?')[0].toUpperCase();
+  if(!people().some(q=>q.id!==id&&up(q.name.trim())===up(n)))return up(n);
+  return parts.length>1?up(parts[0])+up(parts[parts.length-1]):up(n)+(n[1]||'').toLowerCase();
+}
+const av=(id,cls='')=>{const p=person(id),t=initials(id);return `<span class="av ${cls}${t.length>1?' two':''}" style="background:${COLORS[p.c%COLORS.length]}" title="${esc(p.name)}">${esc(t)}</span>`};
 const stack=(ids,cls='sm')=>`<span class="stack">${ids.slice(0,5).map(id=>av(id,cls)).join('')}${ids.length>5?`<span class="av ${cls}" style="background:${CAT_COL.other}">+${ids.length-5}</span>`:''}</span>`;
 const money=p=>{const n=Math.abs(p)/100;return (p<0?'−':'')+S.cur+n.toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2})};
 const toPence=v=>{const n=parseFloat(String(v).replace(',','.').replace(/[^0-9.]/g,''));return isFinite(n)?Math.round(n*100):NaN};
@@ -514,7 +524,7 @@ function openSheet(ex){
   /* cat: null = not chosen yet (grey); guessed from the description until the user picks one */
   const f={cat:ex?.cat||null,catSet:!!ex,menu:false,paidBy:ex?.paidBy||lastPayer,for:new Set(ex?.for||P.map(p=>p.id))};
   const sc=$('#scrim');sc.hidden=false;
-  const pa=(p,on,attr)=>`<button type="button" class="pa" data-${attr}="${p.id}" aria-pressed="${on}" aria-label="${esc(p.name)}">${av(p.id,'lg')}</button>`;
+  const pa=(p,on,attr)=>`<button type="button" class="pa" data-${attr}="${p.id}" aria-pressed="${on}" aria-label="${esc(p.name)}">${av(p.id,'lg')}<span class="pn">${esc(p.name.trim().split(/\s+/)[0])}</span></button>`;
   const draw=()=>{
     const n=f.for.size,a=toPence($('#famt').value),c=f.cat;
     const cb=$('#catbtn');cb.className='catbtn'+(c?'':' none');cb.style.background=c?CAT_COL[c]:'';
