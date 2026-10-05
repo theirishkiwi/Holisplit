@@ -140,7 +140,8 @@ h2{font:600 .78rem var(--body);text-transform:uppercase;letter-spacing:.08em;col
 .set .col{flex-direction:column;align-items:stretch;gap:8px}
 .set label{font-weight:600}
 .set small{display:block;color:var(--muted);font-weight:400;font-size:.8rem}
-.set input.field{padding:10px}
+.set input.field,.set textarea.field{padding:10px}
+.set textarea.field{resize:vertical;font:13px/1.4 ui-monospace,monospace}
 .cur{width:4em;text-align:center}
 .sw{appearance:none;width:48px;height:28px;border-radius:999px;background:var(--line);position:relative;flex:none;cursor:pointer;transition:background .15s}
 .sw::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgb(0 0 0 / .25);transition:transform .15s}
@@ -230,7 +231,7 @@ const COLORS=['#ffcfb3','#bfe6c9','#bcd8f5','#dccbf3','#f8c3cd','#b2e3df','#f6e1
 const CATS=['food','groceries','drinks','transport','stay','activity','other'];
 const CAT_COL={food:'#ffdcc7',groceries:'#cdeed7',drinks:'#f9d3dc',transport:'#cfe2f8',stay:'#e3d6f6',activity:'#f8e8b8',other:'#dde1ea'};
 const CAT_RX={
-  groceries:/super|market|grocer|shop|tesco|lidl|aldi|mercadona|carrefour|spar|co-?op|bakery/i,
+  groceries:/super|market|grocer|shop|tesco|lidl|aldi|mercadona|carrefour|spar|co-?op|conad|eurospin|coop|esselunga|bakery/i,
   drinks:/drink|bar\b|beer|wine|pub|cocktail|coffee|caf[eé]|gin/i,
   food:/dinner|lunch|breakfast|brunch|meal|restaurant|tapas|pizza|food|snack|ice ?cream|takeaway|burger|sushi/i,
   transport:/taxi|uber|bolt|bus|train|car\b|hire|fuel|petrol|diesel|parking|flight|ferry|transfer|airport|toll|metro/i,
@@ -584,6 +585,9 @@ function openSettings(){
       <div><label for="scur">Currency</label><input id="scur" class="field cur" type="text" maxlength="3" value="${esc(S.cur)}"></div>
       <div><label for="ssync">Sync with group<small class="status">${status}</small></label><input id="ssync" class="sw" type="checkbox" role="switch" ${prefs.sync?'checked':''} ${syncAvail?'':'disabled'}></div>
     </div>
+    <div class="set"><div class="col"><label for="simp">Import expenses<small>Paste import text into this trip</small></label>
+      <textarea id="simp" class="field" rows="3" placeholder="Paste here" autocomplete="off"></textarea>
+      <button class="btn primary" id="simpgo">Import</button></div></div>
     <h2 style="margin:4px 4px -6px">Trips</h2>
     <div class="set">${trips}<button class="trip newt" id="snew">${ico('i-plus')}New trip</button></div>
   </div>`;
@@ -592,9 +596,32 @@ function openSettings(){
     const tr=e.target.closest('[data-trip]');
     if(tr){close();const id=tr.dataset.trip;if(id!==S.id){const t=loadTrip(id);t?switchTo(t):join(id)}return}
     if(e.target.closest('#snew')){close();newTrip()}
+    if(e.target.closest('#simpgo')){const t=$('#simp').value;if(importData(t))close()}
   };
   $('#scur').onchange=e=>{S.cur=e.target.value.trim()||'£';S.nu=now();save();render()};
   $('#ssync').onchange=e=>{prefs.sync=e.target.checked;savePrefs();setNet(syncOn()?'sync':'off');render();sync()};
+}
+/* Import: {"people":[names],"expenses":[[id,date,desc,amount,payerName,cat?,[forNames]?]]}.
+   People match by name; missing people are added. No "for" list = split between everyone. Same id = skipped, so re-importing is safe. */
+function importData(txt){
+  let d;
+  try{d=JSON.parse(txt.slice(txt.indexOf('{'),txt.lastIndexOf('}')+1))}catch(e){}
+  if(!d||!Array.isArray(d.expenses)){toast('That isn\'t import text');return false}
+  if(S.sample){S=blank();open=null}
+  const find=n=>people().find(p=>p.name.trim().toLowerCase()===String(n).trim().toLowerCase());
+  const ensure=n=>find(n)||(S.people.push({id:uid(),name:String(n).trim(),c:nextColor(),u:now()}),find(n));
+  (d.people||[]).forEach(ensure);
+  if(d.cur&&!expenses().length){S.cur=d.cur;S.nu=now()}
+  let added=0;
+  d.expenses.forEach(([id,date,desc,amt,payer,cat,forNames])=>{
+    id=String(id);if(S.expenses.some(e=>e.id===id)||!(amt>0))return;
+    const f=Array.isArray(forNames)?forNames.map(n=>ensure(n).id):people().map(p=>p.id);
+    S.expenses.push({id,desc:String(desc),amt:Math.round(amt*100),date:date||today(),paidBy:ensure(payer).id,for:f,cat:CATS.includes(cat)?cat:guessCat(desc),u:now()});
+    added++;
+  });
+  save();tab='exp';open=null;render();
+  toast(added?`Imported ${added} expense${added>1?'s':''}`:'Nothing new to import');
+  return true;
 }
 function close(){const sc=$('#scrim');sc.hidden=true;sc.innerHTML=''}
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('#scrim').hidden)close()});
