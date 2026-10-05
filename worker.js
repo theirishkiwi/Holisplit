@@ -6,12 +6,22 @@ const MAX_BYTES = 512 * 1024;
 const MAX_PHOTO = 3 * 1024 * 1024;
 const KEEP_FOR = 60 * 60 * 24 * 365; // a trip is removed a year after its last change
 const H = { 'content-type': 'application/json', 'cache-control': 'no-store' };
+// A reset link leaves this marker at the old ID: the old link stops working and reveals nothing
+const REVOKED = '{"revoked":true}';
+const gone = () => json({ error: 'link reset' }, 410);
 const json = (o, status = 200) => new Response(JSON.stringify(o), { status, headers: H });
+
+// Encrypted trips (v2) are an opaque envelope { v: 2, id, rev, enc, prev? }. The server never sees the key,
+// so it cannot merge them: phones merge, and rev makes a stale write fail with 409 so the phone merges and retries.
+const isEnc = t => !!t && t.v === 2 && typeof t.enc === 'string';
+const parse = s => { try { return JSON.parse(s); } catch { return null; } };
 
 // Keep only the fields the app uses
 function clean(t) {
-  const { v, id, name, cur, nu, people, expenses, u } = t;
-  return { v, id, name, cur, nu: nu || 0, people: people || [], expenses: expenses || [], u: u || 0 };
+  const { v, id, name, cur, nu, people, expenses, u, prev } = t;
+  const out = { v, id, name, cur, nu: nu || 0, people: people || [], expenses: expenses || [], u: u || 0 };
+  if (typeof prev === 'string') out.prev = prev;
+  return out;
 }
 function valid(t) {
   return t && t.v && typeof t.id === 'string' && Array.isArray(t.people) && Array.isArray(t.expenses);
@@ -46,18 +56,59 @@ export default {
       if (req.method === 'GET') {
         const img = await env.TRIPS.get(pkey, { type: 'arrayBuffer' });
         if (!img) return json({ error: 'not found' }, 404);
-        return new Response(img, { headers: { 'content-type': 'image/jpeg', 'cache-control': 'private, max-age=31536000' } });
+        const b = new Uint8Array(img);
+        const type = b[0] === 0xff && b[1] === 0xd8 ? 'image/jpeg' : 'application/octet-stream';
+        return new Response(img, { headers: { 'content-type': type, 'cache-control': 'private, max-age=31536000' } });
       }
       if (req.method === 'PUT') {
+        const rec = await env.TRIPS.get('trip:' + trip);
+        if (rec === REVOKED) return gone();
         const buf = await req.arrayBuffer();
         if (buf.byteLength > MAX_PHOTO) return json({ error: 'too large' }, 413);
         const b = new Uint8Array(buf);
-        if (b.length < 3 || b[0] !== 0xff || b[1] !== 0xd8) return json({ error: 'not a jpeg' }, 400);
+        const jpeg = b.length >= 3 && b[0] === 0xff && b[1] === 0xd8;
+        if (!jpeg && !isEnc(parse(rec))) return json({ error: 'not a jpeg' }, 400);
         await env.TRIPS.put(pkey, buf, { expirationTtl: KEEP_FOR });
         return json({ ok: true });
       }
       if (req.method === 'DELETE') { await env.TRIPS.delete(pkey); return json({ ok: true }); }
       return json({ error: 'method not allowed' }, 405);
+    }
+
+    // Reset invite link: the phone first creates the trip at a new ID (with prev = old ID), then calls this.
+    // Any last edits at the old ID are merged in, photos move across, and the old ID is turned off.
+    const mv = url.pathname.match(/^\/api\/trip\/([^/]+)\/move$/);
+    if (mv) {
+      if (req.method !== 'POST') return json({ error: 'method not allowed' }, 405);
+      const from = mv[1];
+      let to;
+      try { ({ to } = await req.json()); } catch { return json({ error: 'bad json' }, 400); }
+      if (!TRIP_ID.test(from) || !TRIP_ID.test(to) || from === to) return json({ error: 'bad id' }, 400);
+      const [oldT, newT] = await Promise.all([env.TRIPS.get('trip:' + from), env.TRIPS.get('trip:' + to)]);
+      if (oldT === REVOKED) return gone();
+      if (!newT) return json({ error: 'new trip not found' }, 404);
+      const next = JSON.parse(newT);
+      if (next.prev !== from) return json({ error: 'new trip does not continue this one' }, 400);
+      const prevT = oldT ? JSON.parse(oldT) : null;
+      if (isEnc(prevT) && !isEnc(next)) return json({ error: 'cannot remove encryption' }, 400);
+      let merged = next;
+      // plain trips are merged here; an encrypted new trip was already merged by the phone before it was sent
+      if (prevT && !isEnc(next)) { merged = merge(next, prevT); merged.id = to; merged.prev = from; }
+      const out = JSON.stringify(merged);
+      await env.TRIPS.put('trip:' + to, out, { expirationTtl: KEEP_FOR });
+      const prefix = `photo:${from}:`;
+      let cursor;
+      do {
+        const page = await env.TRIPS.list({ prefix, cursor });
+        for (const k of page.keys) {
+          const img = await env.TRIPS.get(k.name, { type: 'arrayBuffer' });
+          if (img) await env.TRIPS.put(`photo:${to}:` + k.name.slice(prefix.length), img, { expirationTtl: KEEP_FOR });
+          await env.TRIPS.delete(k.name);
+        }
+        cursor = page.list_complete ? null : page.cursor;
+      } while (cursor);
+      await env.TRIPS.put('trip:' + from, REVOKED, { expirationTtl: KEEP_FOR });
+      return new Response(out, { headers: H });
     }
 
     const m = url.pathname.match(/^\/api\/trip\/([^/]+)$/);
@@ -68,6 +119,7 @@ export default {
 
     if (req.method === 'GET') {
       const t = await env.TRIPS.get(key);
+      if (t === REVOKED) return gone();
       return t ? new Response(t, { headers: H }) : json({ error: 'not found' }, 404);
     }
 
@@ -76,9 +128,24 @@ export default {
       if (body.length > MAX_BYTES) return json({ error: 'too large' }, 413);
       let inc;
       try { inc = JSON.parse(body); } catch { return json({ error: 'bad json' }, 400); }
-      if (!valid(inc) || inc.id !== id) return json({ error: 'bad trip' }, 400);
-
       const current = await env.TRIPS.get(key);
+      if (current === REVOKED) return gone();
+
+      if (isEnc(inc)) {
+        if (inc.id !== id) return json({ error: 'bad trip' }, 400);
+        const cur = current ? JSON.parse(current) : null;
+        if (cur && !isEnc(cur)) return json({ error: 'trip is not encrypted' }, 400);
+        if ((cur?.rev || 0) !== (inc.rev || 0)) return json({ error: 'conflict', current: cur }, 409);
+        const out = { v: 2, id, rev: (cur?.rev || 0) + 1, enc: inc.enc };
+        const prev = cur?.prev ?? inc.prev;
+        if (typeof prev === 'string') out.prev = prev;
+        const str = JSON.stringify(out);
+        await env.TRIPS.put(key, str, { expirationTtl: KEEP_FOR });
+        return new Response(str, { headers: H });
+      }
+
+      if (!valid(inc) || inc.id !== id) return json({ error: 'bad trip' }, 400);
+      if (isEnc(parse(current))) return json({ error: 'trip is encrypted' }, 400);
       const merged = JSON.stringify(current ? merge(JSON.parse(current), inc) : clean(inc));
       if (merged !== current) await env.TRIPS.put(key, merged, { expirationTtl: KEEP_FOR });
       return new Response(merged, { headers: H });
