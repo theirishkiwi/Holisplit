@@ -191,7 +191,9 @@ svg.i.tiny{width:14px;height:14px;vertical-align:-2px}
 .mine{font-size:.75rem;font-weight:600;white-space:nowrap}
 .mine.none{color:var(--muted);font-weight:500}
 .orig{margin-left:4px}
-.paidbtn{border:0;background:var(--wa);color:var(--wa-ink);border-radius:8px;padding:4px 10px;font-size:.78rem;font-weight:700}
+.paidtoggle{border:0;background:var(--wa);color:var(--wa-ink);border-radius:999px;padding:4px 10px 4px 8px;font-size:.78rem;font-weight:700;display:inline-flex;align-items:center;gap:4px}
+.paidtoggle svg.i{stroke-width:2.6}
+.paidbtn{border:1.5px solid var(--line);background:transparent;color:var(--fg);border-radius:999px;padding:3px 10px;font-size:.78rem;font-weight:700}
 /* currency */
 .amtrow{display:flex;gap:8px;position:relative}
 .amtrow input{flex:1;min-width:0}
@@ -702,6 +704,9 @@ function rBal(){
   h+='<h2>Who pays who</h2><div class="card">';
   h+=t.length?t.map(([f,to,m],i)=>`<div class="row"><span class="flow">${uAv(f)}<span>${esc(uName(f))}</span>${ico('i-arrow')}${uAv(to)}<span>${esc(uName(to))}</span></span><span class="rt"><span class="amt">${money(m)}</span><button class="paidbtn" data-settle="${i}">Mark paid</button></span></div>`).join(''):'<div class="square">Everyone is square</div>';
   h+='</div><div class="actions"><button class="btn primary" id="copy">'+ico('i-copy')+'Copy</button><a class="btn wa" href="https://wa.me/?text='+encodeURIComponent(summary())+'" target="_blank" rel="noopener">'+ico('i-chat')+'WhatsApp</a></div>';
+  /* recorded payments: tap the ✓ to mark as not paid (Undo puts it back) */
+  const pays=expenses().filter(isPay);
+  if(pays.length)h+='<h2>Paid</h2><div class="card">'+pays.map(e=>`<div class="row"><span class="flow">${av(e.paidBy)}<span>${esc(pname(e.paidBy))}</span>${ico('i-arrow')}${av(e.for[0])}<span>${esc(pname(e.for[0]))}</span></span><span class="rt"><span class="amt">${money(e.amt)}</span><button class="paidtoggle" data-unpay="${e.id}" aria-pressed="true" aria-label="Paid. Tap to mark as not paid">${ico('i-check','i tiny')}Paid</button></span></div>`).join('')+'</div>';
   h+='<h2>Balances</h2><div class="card">';
   nets.forEach(({u,paid,n})=>{
     h+=`<div class="row">${uAv(u)}<span class="main"><div class="t">${esc(uName(u))}</div><div class="who">Paid ${money(paid)}</div></span><span class="amt ${n>0?'pos':n<0?'neg':''}">${n>0?'+':''}${money(n)}</span></div>`});
@@ -775,6 +780,9 @@ document.addEventListener('click',e=>{
   const py=e.target.closest('[data-pay]');if(py)return openPay(S.expenses.find(x=>x.id===py.dataset.pay));
   const mm=e.target.closest('[data-me]');if(mm){setMe(mm.dataset.me);render();if($('#scrim [data-me]'))openSettings();return}
   const gt=e.target.closest('[data-goto]');if(gt){tab=gt.dataset.goto;render();scrollTo(0,0);return}
+  const up2=e.target.closest('[data-unpay]');
+  if(up2){const p=S.expenses.find(x=>x.id===up2.dataset.unpay);if(p){p.del=true;p.u=now();save();render();
+    toast('Marked as not paid',{label:'Undo',fn:()=>{p.del=false;p.u=now();save();render();toast('Marked as paid')}})}return}
   const st=e.target.closest('[data-settle]');if(st){const x=lastT[+st.dataset.settle];if(x){const m=me(),pick=u=>u.ids.includes(m)?m:u.ids[0];openPay(null,{from:pick(x[0]),to:pick(x[1]),amt:x[2]})}return}
   if(e.target.closest('#export'))return exportCsv();
   const lk=e.target.closest('[data-link]');if(lk){linking=linking===lk.dataset.link?null:lk.dataset.link;rPpl();return}
@@ -925,8 +933,9 @@ function openPay(ex,pre){
     if(!(a>0))return $('#pmsg2').textContent='Enter an amount.';
     if(f.from===f.to)return $('#pmsg2').textContent='Pick two different people.';
     const rec={type:'pay',desc:'Payment',amt:a,date:$('#pdate').value||today(),paidBy:f.from,for:[f.to],cat:'other',u:now()};
-    if(isNew)S.expenses.push({id:uid(),by:me()||null,...rec});else Object.assign(ex,rec);
-    open?.add(rec.date);save();close();render();toast(isNew?'Payment recorded':'Saved');
+    const p=isNew?{id:uid(),by:me()||null,...rec}:Object.assign(ex,rec);if(isNew)S.expenses.push(p);
+    open?.add(rec.date);save();close();render();
+    toast(isNew?'Payment recorded':'Saved',isNew?{label:'Undo',fn:()=>{p.del=true;p.u=now();save();render();toast('Payment removed')}}:null);
   };
 }
 
