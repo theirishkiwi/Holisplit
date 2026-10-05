@@ -5,6 +5,7 @@ const ITEM_ID = /^[A-Za-z0-9_-]{2,40}$/;
 const MAX_BYTES = 512 * 1024;
 const MAX_PHOTO = 3 * 1024 * 1024;
 const KEEP_FOR = 60 * 60 * 24 * 365; // a trip is removed a year after its last change
+const KEEP_DELETED = 60 * 60 * 24 * 30; // a deleted trip can be restored for 30 days, then it expires
 const H = { 'content-type': 'application/json', 'cache-control': 'no-store' };
 // A reset link leaves this marker at the old ID: the old link stops working and reveals nothing
 const REVOKED = '{"revoked":true}';
@@ -18,9 +19,10 @@ const parse = s => { try { return JSON.parse(s); } catch { return null; } };
 
 // Keep only the fields the app uses
 function clean(t) {
-  const { v, id, name, cur, nu, people, expenses, u, prev } = t;
+  const { v, id, name, cur, nu, people, expenses, u, prev, del, delBy, du } = t;
   const out = { v, id, name, cur, nu: nu || 0, people: people || [], expenses: expenses || [], u: u || 0 };
   if (typeof prev === 'string') out.prev = prev;
+  if (du) { out.del = del || null; out.delBy = delBy || null; out.du = du; }
   return out;
 }
 function valid(t) {
@@ -38,6 +40,7 @@ function merge(base, inc) {
     }
   }
   if ((inc.nu || 0) > out.nu) { out.name = inc.name; out.cur = inc.cur; out.nu = inc.nu; }
+  if ((inc.du || 0) > (out.du || 0)) { out.del = inc.del || null; out.delBy = inc.delBy || null; out.du = inc.du; }
   out.u = Math.max(out.u, inc.u || 0);
   return out;
 }
@@ -139,15 +142,17 @@ export default {
         const out = { v: 2, id, rev: (cur?.rev || 0) + 1, enc: inc.enc };
         const prev = cur?.prev ?? inc.prev;
         if (typeof prev === 'string') out.prev = prev;
+        if (inc.del) out.del = inc.del; // the only thing the server learns: this trip is deleted, so keep it 30 days
         const str = JSON.stringify(out);
-        await env.TRIPS.put(key, str, { expirationTtl: KEEP_FOR });
+        await env.TRIPS.put(key, str, { expirationTtl: inc.del ? KEEP_DELETED : KEEP_FOR });
         return new Response(str, { headers: H });
       }
 
       if (!valid(inc) || inc.id !== id) return json({ error: 'bad trip' }, 400);
       if (isEnc(parse(current))) return json({ error: 'trip is encrypted' }, 400);
-      const merged = JSON.stringify(current ? merge(JSON.parse(current), inc) : clean(inc));
-      if (merged !== current) await env.TRIPS.put(key, merged, { expirationTtl: KEEP_FOR });
+      const m = current ? merge(JSON.parse(current), inc) : clean(inc);
+      const merged = JSON.stringify(m);
+      if (merged !== current) await env.TRIPS.put(key, merged, { expirationTtl: m.del ? KEEP_DELETED : KEEP_FOR });
       return new Response(merged, { headers: H });
     }
 

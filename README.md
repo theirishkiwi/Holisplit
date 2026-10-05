@@ -6,7 +6,7 @@ wrangler.jsonc     config: static assets + KV namespace "TRIPS"
 
 ## Tests
 npm install
-npm test      (25 tests: split maths, settling, couples, payments, currencies, amount entry, dates, worker sync, photos, link reset and encryption)
+npm test      (30 tests: split maths, settling, couples, payments, currencies, amount entry, dates, worker sync, photos, link reset, encryption, delete and restore)
 
 ## Deploy (one time)
 1. npx wrangler login
@@ -20,3 +20,9 @@ New trips are end-to-end encrypted (AES-GCM). The key is the part of the invite 
 (#tripid.key); it never reaches the server, so the Worker and the Cloudflare dashboard only see ciphertext.
 Older plain trips keep working; Settings -> Encrypt moves one to a new encrypted link.
 If every copy of a link is lost, the trip cannot be recovered.
+
+## Deleting trips
+Settings -> Delete this trip asks first. "Remove from this phone" leaves the group's copy alone;
+"Delete for everyone" (two taps) removes it from every phone. Either can be restored from
+Settings -> Recently deleted (or the banner on the trip) for 30 days. After that the phone clears it
+and the server copy expires.

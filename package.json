@@ -2,6 +2,6 @@
   "name": "holiday-split",
   "private": true,
   "type": "module",
-  "scripts": { "test": "TZ=Europe/Rome node --test tests/calc.test.cjs tests/worker.test.cjs tests/reset.test.cjs tests/encryption.test.cjs" },
+  "scripts": { "test": "TZ=Europe/Rome node --test tests/calc.test.cjs tests/worker.test.cjs tests/reset.test.cjs tests/encryption.test.cjs tests/delete.test.cjs" },
   "devDependencies": { "jsdom": "^24.0.0" }
 }
