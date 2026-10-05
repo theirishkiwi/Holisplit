@@ -226,6 +226,7 @@ svg.i.tiny{width:14px;height:14px;vertical-align:-2px}
     <button class="iconbtn" id="cloud" aria-label="Sync now" hidden><svg class="i"><use href="#i-cloud"/></svg></button>
     <button class="iconbtn" id="gear" aria-label="Settings"><svg class="i"><use href="#i-gear"/></svg></button>
   </header>
+  <div class="banner" id="deleted" hidden><span id="delText"></span><button id="restoreBtn">Restore</button></div>
   <div class="banner" id="revoked" hidden><span>This trip's link was reset. Open the new link from the group to keep syncing. Your changes will carry over.</span></div>
   <div class="banner" id="sample" hidden><span>Example trip</span><button id="clearSample">Start fresh</button></div>
   <nav class="tabs" role="tablist">
@@ -327,8 +328,16 @@ const savePrefs=()=>{try{localStorage.setItem(PKEY,JSON.stringify(prefs))}catch(
 const loadTrip=id=>{try{const t=JSON.parse(localStorage.getItem(TK(id)));return t&&t.v?fix(t):null}catch(e){return null}};
 function persist(){
   try{localStorage.setItem(TK(S.id),JSON.stringify(S))}catch(e){}
-  if(!S.sample){const l=prefs.trips.find(t=>t.id===S.id);if(l)l.name=S.name;else prefs.trips.unshift({id:S.id,name:S.name})}
+  if(!S.sample){const l=prefs.trips.find(t=>t.id===S.id);if(l){l.name=S.name;l.del=S.del||null}else prefs.trips.unshift({id:S.id,name:S.name,del:S.del||null})}
   prefs.cur=S.id;savePrefs();
+}
+/* Deleted trips: kept for 30 days so they can be restored, then removed from the phone (and expire on the server) */
+const KEEP_DELETED=30*864e5;
+const goneAt=t=>t.del||t.local||0;
+const daysLeft=t=>Math.max(0,Math.ceil((goneAt(t)+KEEP_DELETED-now())/864e5));
+function purgeDeleted(){
+  prefs.trips=prefs.trips.filter(t=>{if(goneAt(t)&&now()-goneAt(t)>KEEP_DELETED){try{localStorage.removeItem(TK(t.id))}catch(e){}return false}return true});
+  savePrefs();
 }
 /* migrate the earlier single-trip save */
 try{const old=JSON.parse(localStorage.getItem('holiday-split-v1'));
@@ -336,7 +345,9 @@ try{const old=JSON.parse(localStorage.getItem('holiday-split-v1'));
     fix(old);localStorage.setItem(TK(old.id),JSON.stringify(old));if(!old.sample)prefs.trips.unshift({id:old.id,name:old.name});prefs.cur=old.id;savePrefs()}
   localStorage.removeItem('holiday-split-v1')}catch(e){}
 
-let S=(prefs.cur&&loadTrip(prefs.cur))||fix(sample());
+purgeDeleted();
+const firstLive=()=>prefs.trips.find(t=>!goneAt(t)&&loadTrip(t.id));
+let S=(prefs.cur&&!(prefs.trips.find(t=>t.id===prefs.cur)||{}).local&&loadTrip(prefs.cur))||fix(sample());
 
 /* every user edit goes through save(): marks the trip as needing a push */
 let seq=0;
@@ -364,7 +375,7 @@ const tripOut=t=>{const {sample,dirty,lastPayer,revoked,key,rev,...x}=t;return x
 const payload=()=>tripOut(S);
 async function encTrip(t){
   const env={v:2,id:t.id,rev:t.rev||0,enc:b64u(await seal(t.key,new TextEncoder().encode(JSON.stringify(tripOut(t)))))};
-  if(t.prev)env.prev=t.prev;return env;
+  if(t.prev)env.prev=t.prev;if(t.del)env.del=t.del;return env;
 }
 async function decTrip(env,key){
   const t=JSON.parse(new TextDecoder().decode(await unseal(key,ub64u(env.enc))));
@@ -372,7 +383,7 @@ async function decTrip(env,key){
 }
 /* true when this phone holds something the server copy lacks (a missed or lost write) */
 function ahead(loc,rem){
-  if(!rem)return true;if((loc.nu||0)>(rem.nu||0))return true;
+  if(!rem)return true;if((loc.nu||0)>(rem.nu||0)||(loc.du||0)>(rem.du||0))return true;
   return ['people','expenses'].some(k=>loc[k].some(x=>{const r=(rem[k]||[]).find(y=>y.id===x.id);return !r||(x.u||0)>(r.u||0)}));
 }
 const ready=fetch('/api/ping',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(j=>{syncAvail=!!(j&&j.ok)}).catch(()=>{}).then(()=>{setNet(syncOn()?'sync':'off');sync()});
@@ -422,6 +433,7 @@ function mergeIn(t){
   }));
   if((t.nu||0)>(S.nu||0)){S.name=t.name;S.cur=t.cur;S.nu=t.nu;changed++}
   if(!S.pk&&t.pk)S.pk=t.pk;
+  if((t.du||0)>(S.du||0)){S.del=t.del||null;S.delBy=t.delBy||null;S.du=t.du;changed++}
   fix(S);persist();
   if(changed){if(open&&added)expenses().forEach(e=>open.add(e.date));render();if(added)toast(`${added} new from the group`)}
 }
@@ -430,7 +442,7 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)sync()});
 window.addEventListener('online',sync);
 
 /* ---- Trips: switch, create, join by link ---- */
-function switchTo(t){S=fix(t);open=null;tab='exp';persist();render();setNet(syncOn()?'sync':'off');sync()}
+function switchTo(t){const l=prefs.trips.find(x=>x.id===t.id);if(l)l.local=null;S=fix(t);open=null;tab='exp';persist();render();setNet(syncOn()?'sync':'off');sync()}
 /* ---- Reset invite link: copy the trip to a new ID, then the server turns the old ID off ---- */
 function retargetPhotos(from,to){
   const keys=[];for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith(PH))keys.push(k)}
@@ -460,6 +472,54 @@ async function resetLink(){
     toast(before.key?'New link ready. Send it to the group.':'Trip encrypted. Send the new link to the group.');tab='ppl';render();
   }catch(e){S=before;toast('Couldn\'t do that. Check your connection and try again.')}
 }
+/* ---- Delete & restore ---- */
+const waitIdle=async()=>{for(let i=0;i<100&&syncing;i++)await new Promise(r=>setTimeout(r,50))};
+function leaveTo(){const t=firstLive();switchTo(t?loadTrip(t.id):fix(sample()))}
+async function deleteForEveryone(){
+  if(!syncOn())return toast('Deleting for everyone needs a connection');
+  const trip=S;
+  trip.del=now();trip.delBy=me()||null;trip.du=now();save();
+  await waitIdle();await sync();
+  if(S!==trip||trip.dirty){trip.del=null;trip.delBy=null;trip.du=now();save();render();return toast('Couldn\'t delete. Check your connection and try again.')}
+  const id=trip.id;leaveTo();
+  toast(`Deleted ${trip.name}`,{label:'Undo',fn:()=>restoreTrip(id)});
+}
+function removeFromPhone(){
+  const trip=S,l=prefs.trips.find(t=>t.id===trip.id);
+  if(trip.sample){S=fix(sample());S.id='sample';persist();render();return toast('Example trip reset')}
+  if(l){l.local=now();savePrefs()}
+  leaveTo();
+  toast(`Removed ${trip.name} from this phone`,{label:'Undo',fn:()=>restoreTrip(trip.id)});
+}
+function restoreTrip(id){
+  const l=prefs.trips.find(t=>t.id===id),t=loadTrip(id);
+  if(!t)return toast('That trip is no longer on this phone');
+  if(l)l.local=null;
+  switchTo(t);
+  if(S.del){S.del=null;S.delBy=null;S.du=now();save()}
+  render();toast(`Restored ${S.name}`);
+}
+function openDelete(){
+  const sc=$('#scrim');sc.hidden=false;
+  const shared=!S.sample&&syncOn();
+  sc.innerHTML=`<div class="sheet" role="dialog" aria-label="Delete trip">
+    <div class="sh"><h3>Delete “${esc(S.name)}”?</h3><button class="iconbtn" id="dclose" aria-label="Cancel">${ico('i-x')}</button></div>
+    <div class="set">
+      <div class="col"><label>Remove from this phone<small>${shared?'The group keeps it. ':''}You can restore it from Settings for 30 days${shared?', or open the invite link again':''}.</small></label>
+        <button class="btn" id="dlocal">Remove from this phone</button></div>
+      ${shared?`<div class="col"><label>Delete for everyone<small>Removes it from every phone in the group. Anyone can restore it from the trip or from Settings for 30 days, after which it's gone for good.</small></label>
+        <button class="btn danger" id="dall">Delete for everyone</button></div>`:''}
+    </div>
+    <button class="btn" id="dcancel">Cancel</button>
+  </div>`;
+  sc.onclick=e=>{
+    if(e.target===sc||e.target.closest('#dclose')||e.target.closest('#dcancel'))return close();
+    if(e.target.closest('#dlocal')){close();removeFromPhone();return}
+    const da=e.target.closest('#dall');
+    if(da){if(!da.dataset.armed){da.dataset.armed=1;da.textContent='Tap again to delete for everyone';return}close();deleteForEveryone()}
+  };
+}
+$('#restoreBtn').onclick=()=>restoreTrip(S.id);
 function newTrip(){switchTo(blank());tab='ppl';render();setTimeout(()=>$('#pname')?.focus(),50)}
 const tripLink=()=>location.origin+location.pathname+'#'+S.id+(S.key?'.'+S.key:'');
 async function join(id,key){
@@ -573,7 +633,8 @@ function render(){
   $('#sample').hidden=!S.sample;$('#revoked').hidden=!S.revoked;
   document.querySelectorAll('.tabs button').forEach(b=>b.setAttribute('aria-selected',b.dataset.tab===tab));
   ['exp','bal','ppl'].forEach(id=>$('#'+id).hidden=id!==tab);
-  $('#add').hidden=tab==='ppl';
+  $('#add').hidden=tab==='ppl'||!!S.del;
+  $('#deleted').hidden=!S.del;if(S.del)$('#delText').textContent=`${S.delBy?pname(S.delBy)+' deleted':'Deleted'} this trip. It's removed in ${daysLeft(S)} day${daysLeft(S)===1?'':'s'}.`;
   ({exp:rExp,bal:rBal,ppl:rPpl})[tab]();
 }
 /* ---- Me: who is using this phone (per trip, stored on the phone only) ---- */
@@ -920,7 +981,9 @@ function exportCsv(){
 function openSettings(){
   const sc=$('#scrim');sc.hidden=false;
   const status=!syncAvail?'Sync works in the hosted app only':S.sample?'The example trip isn\'t synced':({ok:'Synced',sync:'Syncing…',offline:'Offline. Changes sync when you\'re back online.'}[$('#cloud').dataset.s]||'')+(S.key?' · encrypted':'');
-  const trips=prefs.trips.map(t=>`<button class="trip" data-trip="${esc(t.id)}"><span>${esc(t.id===S.id?S.name:t.name)}</span>${t.id===S.id?ico('i-check'):''}</button>`).join('');
+  const live=prefs.trips.filter(t=>!goneAt(t)),gone=prefs.trips.filter(t=>goneAt(t)&&t.id!==S.id);
+  const trips=live.map(t=>`<button class="trip" data-trip="${esc(t.id)}"><span>${esc(t.id===S.id?S.name:t.name)}</span>${t.id===S.id?ico('i-check'):''}</button>`).join('')+(S.del?`<button class="trip" data-trip="${esc(S.id)}"><span>${esc(S.name)} (deleted)</span>${ico('i-check')}</button>`:'');
+  const deleted=gone.map(t=>`<div><label>${esc(t.name)}<small>${t.del?'Deleted for everyone':'Removed from this phone'} · ${daysLeft(t)} day${daysLeft(t)===1?'':'s'} left</small></label><button class="btn primary" data-restore="${esc(t.id)}">Restore</button></div>`).join('');
   sc.innerHTML=`<div class="sheet" role="dialog" aria-label="Settings">
     <div class="sh"><h3>Settings</h3><button class="iconbtn" id="sclose" aria-label="Close">${ico('i-x')}</button></div>
     ${people().length?`<div class="set"><div class="col"><label>You are<small>Shows what you owe and are owed on this phone</small></label>${pickRow('me',me())}</div></div>`:''}
@@ -935,12 +998,16 @@ function openSettings(){
       <button class="btn primary" id="simpgo">Import</button></div></div>
     <h2 style="margin:4px 4px -6px">Trips</h2>
     <div class="set">${trips}<button class="trip newt" id="snew">${ico('i-plus')}New trip</button></div>
+    ${deleted?`<h2 style="margin:4px 4px -6px">Recently deleted</h2><div class="set">${deleted}</div>`:''}
+    <button class="btn danger" id="sdel">Delete this trip…</button>
   </div>`;
   sc.onclick=e=>{
     if(e.target===sc||e.target.closest('#sclose'))return close();
     const tr=e.target.closest('[data-trip]');
     if(tr){close();const id=tr.dataset.trip;if(id!==S.id){const t=loadTrip(id);t?switchTo(t):join(id)}return}
     if(e.target.closest('#snew')){close();newTrip()}
+    if(e.target.closest('#sdel')){openDelete();return}
+    const rr=e.target.closest('[data-restore]');if(rr){close();restoreTrip(rr.dataset.restore);return}
     const rs=e.target.closest('#sreset');if(rs){if(rs.dataset.armed){close();resetLink()}else{rs.dataset.armed=1;rs.textContent='Tap to confirm'}return}
     if(e.target.closest('#simpgo')){const t=$('#simp').value;if(importData(t))close()}
   };

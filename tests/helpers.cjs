@@ -30,8 +30,8 @@ function load(opts = {}) {
 
 // A fake Cloudflare KV store and a fetch that sends the page's /api calls to the real worker.js
 function kv() {
-  const m = new Map();
-  return { m, get: async (k, o) => m.has(k) ? m.get(k) : null, put: async (k, v) => { m.set(k, v); }, delete: async k => { m.delete(k); },
+  const m = new Map(), ttl = new Map();
+  return { m, ttl, get: async (k, o) => m.has(k) ? m.get(k) : null, put: async (k, v, o) => { m.set(k, v); ttl.set(k, o && o.expirationTtl); }, delete: async k => { m.delete(k); },
     list: async ({ prefix }) => ({ keys: [...m.keys()].filter(k => k.startsWith(prefix)).map(name => ({ name })), list_complete: true }) };
 }
 function workerFetch(worker, env) {
