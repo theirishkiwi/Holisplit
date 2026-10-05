@@ -4,6 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#f6f7fb">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Split">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/icon-192.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}[hidden]{display:none!important}</style>
 <title>Holiday Split</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700&family=Figtree:wght@400;500;600;700&display=swap">
@@ -167,6 +173,49 @@ h2{font:600 .78rem var(--body);text-transform:uppercase;letter-spacing:.08em;col
 .pickhint{color:var(--accent);font-weight:600;text-align:center;margin:12px 0 0}
 svg.i.tiny{width:14px;height:14px;vertical-align:-2px}
 .invite{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+/* me card */
+.mecard{display:block;width:100%;text-align:left;border:0;background:var(--card);border-radius:16px;padding:14px 16px;margin-top:14px;color:var(--fg)}
+.mehead{font:600 .95rem var(--body);color:var(--muted);margin-bottom:4px}
+.mebig{font:700 1.35rem/1.25 var(--display)}
+.melines{margin-top:6px;display:flex;flex-direction:column;gap:2px;color:var(--muted);font-size:.9rem}
+.melines b{color:var(--fg);font-weight:600}
+/* rows: right column with amount + my position */
+.rt{display:flex;flex-direction:column;align-items:flex-end;gap:2px;flex:none}
+.mine{font-size:.75rem;font-weight:600;white-space:nowrap}
+.mine.none{color:var(--muted);font-weight:500}
+.orig{margin-left:4px}
+.paidbtn{border:0;background:var(--wa);color:var(--wa-ink);border-radius:8px;padding:4px 10px;font-size:.78rem;font-weight:700}
+/* currency */
+.amtrow{display:flex;gap:8px;position:relative}
+.amtrow input{flex:1;min-width:0}
+.ccbtn{border:0;border-radius:12px;min-width:64px;padding:0 10px;background:var(--card);font:700 1.3rem var(--display);flex:none;color:var(--fg)}
+.ccmenu{position:absolute;left:0;top:calc(100% + 6px);background:var(--card);border-radius:16px;box-shadow:0 12px 32px rgb(10 14 30 / .2);padding:8px;display:grid;grid-template-columns:repeat(5,48px);gap:6px;z-index:5}
+.ccmenu button{border:2px solid transparent;background:var(--tile);border-radius:10px;height:44px;font:700 1rem var(--display);color:var(--fg)}
+.ccmenu button[aria-pressed="true"]{border-color:var(--accent)}
+.raterow{display:flex;align-items:center;gap:8px;font-weight:600;flex-wrap:wrap}
+.raterow input{width:6.5em;padding:9px 10px}
+.raterow .conv{color:var(--muted);font-weight:500}
+/* photo */
+.shr{display:flex;gap:8px;align-items:center}
+.thumbrow{display:flex;align-items:center;gap:10px}
+.thumb{border:0;padding:0;background:var(--tile);border-radius:12px;width:72px;height:72px;overflow:hidden;flex:none}
+.thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.viewer{position:fixed;inset:0;background:rgb(0 0 0 / .92);z-index:40;display:grid;place-items:center;padding:16px}
+.viewer img{max-width:100%;max-height:100%;object-fit:contain;border-radius:8px}
+.viewer .iconbtn{position:absolute;top:calc(12px + env(safe-area-inset-top,0px));right:12px}
+.by{color:var(--muted);font-size:.8rem;text-align:center;margin:0}
+/* summary */
+.sums{padding:12px 14px;display:flex;flex-direction:column;gap:12px}
+.sumrow{display:grid;grid-template-columns:28px 1fr auto;gap:4px 10px;align-items:center}
+.sumrow .ic{width:28px;height:28px;border-radius:8px}
+.sumrow .ic svg.i{width:16px;height:16px}
+.sumrow .lab{font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sumrow .v{font-weight:700}
+.track{grid-column:2 / 4;height:8px;border-radius:4px;background:var(--tile);overflow:hidden}
+.fill{display:block;height:100%;border-radius:4px}
+.btn.wide{width:100%;margin-top:14px}
+.toast{display:flex;align-items:center;gap:14px}
+.toast button{border:0;background:none;color:var(--bg);font-weight:700;text-decoration:underline;padding:0}
 </style>
 </head>
 <body>
@@ -210,6 +259,9 @@ svg.i.tiny{width:14px;height:14px;vertical-align:-2px}
   <symbol id="i-cloud" viewBox="0 0 24 24"><path d="M7 18a4.5 4.5 0 0 1-.6-9A6 6 0 0 1 18 9.5a4.3 4.3 0 0 1-.5 8.5z"/></symbol>
   <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></symbol>
   <symbol id="i-unlink" viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1M4 4l16 16"/></symbol>
+  <symbol id="i-pay" viewBox="0 0 24 24"><path d="M4 8h14l-3-3M20 16H6l3 3"/></symbol>
+  <symbol id="i-cam" viewBox="0 0 24 24"><path d="M4 8a1 1 0 0 1 1-1h2.5l1.5-2h6l1.5 2H19a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"/><circle cx="12" cy="13" r="3.5"/></symbol>
+  <symbol id="i-dl" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></symbol>
   <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
   <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></symbol>
 </svg>
@@ -238,6 +290,9 @@ const CAT_RX={
   stay:/hotel|airbnb|villa|apartment|hostel|room|stay|accommodation/i,
   activity:/ticket|boat|tour|museum|entry|excursion|golf|surf|kayak|show|beach|spa|park/i
 };
+const CAT_NAME={food:'Food',groceries:'Groceries',drinks:'Drinks',transport:'Transport',stay:'Stay',activity:'Activities',other:'Other'};
+const CAT_FILL={food:'#f4a578',groceries:'#79c995',drinks:'#ec8fa5',transport:'#7fafe8',stay:'#ac94e3',activity:'#e3bf50',other:'#a3aabb'};
+const PAY_COL='#d6f1e2',CCS=['€','£','$','CHF','kr','zł','Kč','Ft','¥','₺'];
 const matchCat=d=>CATS.find(c=>CAT_RX[c]&&CAT_RX[c].test(d));
 const guessCat=d=>matchCat(d)||'other';
 
@@ -301,7 +356,7 @@ async function sync(){
     if(!r.ok)throw new Error(r.status);
     const remote=await r.json();
     if(S===trip){if(seq===sent)S.dirty=false;mergeIn(remote)}
-    setNet('ok');
+    setNet('ok');uploadPhotos();
   }catch(e){setNet('offline')}
   syncing=false;
   if(again||(S.dirty&&seq!==sent)){again=false;kick()}
@@ -425,34 +480,82 @@ function render(){
   $('#add').hidden=tab==='ppl';
   ({exp:rExp,bal:rBal,ppl:rPpl})[tab]();
 }
+/* ---- Me: who is using this phone (per trip, stored on the phone only) ---- */
+const me=()=>{const id=(prefs.me||{})[S.id];return id&&people().some(p=>p.id===id)?id:null};
+function setMe(id){prefs.me=prefs.me||{};prefs.me[S.id]=id;savePrefs()}
+const isPay=e=>e.type==='pay';
+const spend=()=>expenses().filter(e=>!isPay(e));
+const first=n=>String(n).trim().split(/\s+/)[0];
+const fmtCc=(p,cc)=>cc+(p/100).toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2});
+const pickRow=(attr,sel)=>`<div class="pick">${people().map(p=>`<button type="button" class="pa" data-${attr}="${p.id}" aria-pressed="${p.id===sel}" aria-label="${esc(p.name)}">${av(p.id,'lg')}<span class="pn">${esc(first(p.name))}</span></button>`).join('')}</div>`;
+function myLine(e){
+  const m=me();if(!m)return '';
+  if(isPay(e))return e.paidBy===m?'<span class="mine none">you paid</span>':e.for.includes(m)?'<span class="mine none">you received</span>':'';
+  const sh=shares(e)[m]||0,paid=e.paidBy===m?e.amt:0,n=paid-sh;
+  if(!paid&&!sh)return '<span class="mine none">not involved</span>';
+  if(n>0)return `<span class="mine pos">you lent ${money(n)}</span>`;
+  if(n<0)return `<span class="mine neg">you owe ${money(-n)}</span>`;
+  return '<span class="mine none">your share</span>';
+}
+function meCard(){
+  const m=me();
+  if(!m)return `<div class="mecard"><div class="mehead">Who are you on this phone?</div>${pickRow('me',null)}</div>`;
+  const {t}=plan(),mine=x=>x.ids.includes(m);
+  const my=units().find(mine),other=my.ids.find(i=>i!==m);
+  const who=other?`You & ${esc(pname(other))}`:'You',are=other?`${who} are`:"You're",obj=other?`you & ${esc(pname(other))}`:'you';
+  const out=t.filter(x=>mine(x[0])),inn=t.filter(x=>mine(x[1]));
+  const owe=out.reduce((s,x)=>s+x[2],0),owed=inn.reduce((s,x)=>s+x[2],0);
+  const big=owe?`<span class="neg">${who} owe ${money(owe)}</span>`:owed?`<span class="pos">${are} owed ${money(owed)}</span>`:`${are} all square`;
+  const lines=[...out.map(x=>`${who} owe ${esc(uName(x[1]))} <b>${money(x[2])}</b>`),...inn.map(x=>`${esc(uName(x[0]))} owe${x[0].ids.length>1?'':'s'} ${obj} <b>${money(x[2])}</b>`)];
+  const shown=lines.slice(0,3),more=lines.length-shown.length;
+  return `<button class="mecard" data-goto="bal"><div class="mebig">${big}</div>${shown.length?`<div class="melines">${shown.map(l=>`<span>${l}</span>`).join('')}${more?`<span>and ${more} more</span>`:''}</div>`:''}</button>`;
+}
 function rExp(){
   const E=expenses();
   if(!people().length){$('#exp').innerHTML='<p class="empty">Add your group first.</p>';return}
-  if(!E.length){$('#exp').innerHTML='<p class="empty">No expenses yet.</p>';return}
+  let h=meCard();
+  if(!E.length){$('#exp').innerHTML=h+'<p class="empty">No expenses yet.</p>';return}
   const days=[...new Set(E.map(e=>e.date))];
   if(!open)open=new Set([days[0]]);
   const all=days.every(d=>open.has(d));
-  let h=`<div class="bar"><b>${money(E.reduce((s,e)=>s+e.amt,0))}</b>${days.length>1?`<button class="ghost" id="toggleAll">${ico(all?'i-collapse':'i-expand')}${all?'Collapse all':'Expand all'}</button>`:''}</div>`;
+  h+=`<div class="bar"><b>${money(spend().reduce((s,e)=>s+e.amt,0))}</b>${days.length>1?`<button class="ghost" id="toggleAll">${ico(all?'i-collapse':'i-expand')}${all?'Collapse all':'Expand all'}</button>`:''}</div>`;
   const everyone=people().length;
   days.forEach(d=>{
     const de=E.filter(e=>e.date===d),isOpen=open.has(d);
-    h+=`<div class="day${isOpen?' open':''}"><button class="dayh" data-day="${d}" aria-expanded="${isOpen}"><span class="d">${fmtDate(d)}</span><span class="s">${money(de.reduce((s,e)=>s+e.amt,0))}</span>${ico('i-chev')}</button>`;
-    if(isOpen)h+='<ul class="items">'+de.map(e=>`<li><button class="row" data-edit="${e.id}"><span class="ic" style="background:${CAT_COL[e.cat]}">${ico('c-'+e.cat)}</span><span class="main"><div class="t">${esc(e.desc)}</div><div class="who">${av(e.paidBy,'sm')}${ico('i-arrow')}${e.for.length===everyone?'<span>All</span>':stack(e.for)}</div></span><span class="amt">${money(e.amt)}</span></button></li>`).join('')+'</ul>';
+    h+=`<div class="day${isOpen?' open':''}"><button class="dayh" data-day="${d}" aria-expanded="${isOpen}"><span class="d">${fmtDate(d)}</span><span class="s">${money(de.filter(e=>!isPay(e)).reduce((s,e)=>s+e.amt,0))}</span>${ico('i-chev')}</button>`;
+    if(isOpen)h+='<ul class="items">'+de.map(e=>isPay(e)
+      ?`<li><button class="row" data-pay="${e.id}"><span class="ic" style="background:${PAY_COL}">${ico('i-pay')}</span><span class="main"><div class="t">${esc(pname(e.paidBy))} paid ${esc(pname(e.for[0]))}</div><div class="who">${av(e.paidBy,'sm')}${ico('i-arrow')}${av(e.for[0],'sm')}<span>Payment</span></div></span><span class="rt"><span class="amt">${money(e.amt)}</span>${myLine(e)}</span></button></li>`
+      :`<li><button class="row" data-edit="${e.id}"><span class="ic" style="background:${CAT_COL[e.cat]}">${ico('c-'+e.cat)}</span><span class="main"><div class="t">${esc(e.desc)}</div><div class="who">${av(e.paidBy,'sm')}${ico('i-arrow')}${e.for.length===everyone?'<span>All</span>':stack(e.for)}${e.cc?`<span class="orig">${fmtCc(e.oamt,e.cc)}</span>`:''}${e.photo?ico('i-cam','i tiny'):''}</div></span><span class="rt"><span class="amt">${money(e.amt)}</span>${myLine(e)}</span></button></li>`).join('')+'</ul>';
     h+='</div>';
   });
   $('#exp').innerHTML=h;
 }
+let lastT=[];
 function rBal(){
-  const {nets,t}=plan(),couples=hasCouples(),saved=units(false).length-units(true).length;
+  const {nets,t}=plan(),couples=hasCouples();lastT=t;
   let h=couples?`<div class="seg" role="group" aria-label="Settle by"><button data-mode="c" aria-pressed="${byCouple()}">Couples</button><button data-mode="p" aria-pressed="${!byCouple()}">Everyone</button></div>`:'';
   h+='<h2>Who pays who</h2><div class="card">';
-  h+=t.length?t.map(([f,to,m])=>`<div class="row"><span class="flow">${uAv(f)}<span>${esc(uName(f))}</span>${ico('i-arrow')}${uAv(to)}<span>${esc(uName(to))}</span></span><span class="amt">${money(m)}</span></div>`).join(''):'<div class="square">Everyone is square</div>';
+  h+=t.length?t.map(([f,to,m],i)=>`<div class="row"><span class="flow">${uAv(f)}<span>${esc(uName(f))}</span>${ico('i-arrow')}${uAv(to)}<span>${esc(uName(to))}</span></span><span class="rt"><span class="amt">${money(m)}</span><button class="paidbtn" data-settle="${i}">Mark paid</button></span></div>`).join(''):'<div class="square">Everyone is square</div>';
   h+='</div><div class="actions"><button class="btn primary" id="copy">'+ico('i-copy')+'Copy</button><a class="btn wa" href="https://wa.me/?text='+encodeURIComponent(summary())+'" target="_blank" rel="noopener">'+ico('i-chat')+'WhatsApp</a></div>';
   h+='<h2>Balances</h2><div class="card">';
   nets.forEach(({u,paid,n})=>{
     h+=`<div class="row">${uAv(u)}<span class="main"><div class="t">${esc(uName(u))}</div><div class="who">Paid ${money(paid)}</div></span><span class="amt ${n>0?'pos':n<0?'neg':''}">${n>0?'+':''}${money(n)}</span></div>`});
-  $('#bal').innerHTML=h+'</div>';
+  h+='</div>';
+  /* trip summary: spend by category and by person (payments excluded) */
+  const sp=spend();
+  if(sp.length){
+    const bc={};sp.forEach(e=>bc[e.cat]=(bc[e.cat]||0)+e.amt);
+    const cats=Object.entries(bc).sort((a,b)=>b[1]-a[1]);
+    const bp={};people().forEach(p=>bp[p.id]=0);sp.forEach(e=>{const sh=shares(e);for(const id in sh)if(id in bp)bp[id]+=sh[id]});
+    const ppl=Object.entries(bp).sort((a,b)=>b[1]-a[1]);
+    const m1=cats[0][1]||1,m2=Math.max(1,...ppl.map(x=>x[1]));
+    h+='<h2>Spending by category</h2><div class="card sums">'+cats.map(([c,v])=>`<div class="sumrow"><span class="ic" style="background:${CAT_COL[c]}">${ico('c-'+c)}</span><span class="lab">${CAT_NAME[c]}</span><span class="v">${money(v)}</span><span class="track"><span class="fill" style="width:${(v/m1*100).toFixed(1)}%;background:${CAT_FILL[c]}"></span></span></div>`).join('')+'</div>';
+    h+='<h2>Spent on each person</h2><div class="card sums">'+ppl.map(([id,v])=>`<div class="sumrow">${av(id)}<span class="lab">${esc(pname(id))}</span><span class="v">${money(v)}</span><span class="track"><span class="fill" style="width:${(v/m2*100).toFixed(1)}%;background:${COLORS[person(id).c%COLORS.length]}"></span></span></div>`).join('')+'</div>';
+    h+=`<button class="btn wide" id="export">${ico('i-dl')}Export spreadsheet</button>`;
+  }
+  $('#bal').innerHTML=h;
 }
+
 function rPpl(){
   const typed=$('#pname')?.value||'',focused=document.activeElement?.id==='pname';
   let h='<form class="addp" id="pform"><input id="pname" class="field" type="text" placeholder="Add a name" autocomplete="off" aria-label="Name"><button class="btn primary" aria-label="Add">'+ico('i-plus')+'</button></form><p class="msg" id="pmsg"></p>';
@@ -489,13 +592,26 @@ $('#clearSample').onclick=newTrip;
 $('#gear').onclick=openSettings;
 $('#cloud').onclick=()=>sync();
 
-const toast=t=>{const el=$('#toast');el.textContent=t;el.hidden=false;clearTimeout(toast.h);toast.h=setTimeout(()=>el.hidden=true,2200)};
+function toast(t,act){
+  const el=$('#toast');el.innerHTML=`<span>${esc(t)}</span>${act?`<button type="button">${esc(act.label)}</button>`:''}`;el.hidden=false;
+  if(act)el.querySelector('button').onclick=()=>{el.hidden=true;act.fn()};
+  clearTimeout(toast.h);toast.h=setTimeout(()=>el.hidden=true,act?5000:2200);
+}
+function removeExp(ex){
+  ex.del=true;ex.u=now();save();render();
+  toast(isPay(ex)?'Payment deleted':'Deleted',{label:'Undo',fn:()=>{ex.del=false;ex.u=now();save();render();toast('Restored')}});
+}
 function copy(t,ok){navigator.clipboard.writeText(t).then(()=>toast(ok)).catch(()=>toast('Copy blocked here. Use WhatsApp instead.'))}
 
 document.addEventListener('click',e=>{
   const dh=e.target.closest('[data-day]');if(dh){const d=dh.dataset.day;open.has(d)?open.delete(d):open.add(d);rExp();return}
   if(e.target.closest('#toggleAll')){const days=[...new Set(expenses().map(x=>x.date))];open=days.every(d=>open.has(d))?new Set():new Set(days);rExp();return}
   const ed=e.target.closest('[data-edit]');if(ed)return openSheet(S.expenses.find(x=>x.id===ed.dataset.edit));
+  const py=e.target.closest('[data-pay]');if(py)return openPay(S.expenses.find(x=>x.id===py.dataset.pay));
+  const mm=e.target.closest('[data-me]');if(mm){setMe(mm.dataset.me);render();if($('#scrim [data-me]'))openSettings();return}
+  const gt=e.target.closest('[data-goto]');if(gt){tab=gt.dataset.goto;render();scrollTo(0,0);return}
+  const st=e.target.closest('[data-settle]');if(st){const x=lastT[+st.dataset.settle];if(x){const m=me(),pick=u=>u.ids.includes(m)?m:u.ids[0];openPay(null,{from:pick(x[0]),to:pick(x[1]),amt:x[2]})}return}
+  if(e.target.closest('#export'))return exportCsv();
   const lk=e.target.closest('[data-link]');if(lk){linking=linking===lk.dataset.link?null:lk.dataset.link;rPpl();return}
   const pw=e.target.closest('[data-pairwith]');
   if(pw&&linking){const a=person(linking),b=person(pw.dataset.pairwith);a.pair=b.id;b.pair=a.id;a.u=b.u=now();linking=null;save();render();toast(`${a.name} & ${b.name} paired`);return}
@@ -523,56 +639,175 @@ function openSheet(ex){
   const P=people(),isNew=!ex;
   const lastPayer=P.some(p=>p.id===S.lastPayer)?S.lastPayer:P[0].id;
   /* cat: null = not chosen yet (grey); guessed from the description until the user picks one */
-  const f={cat:ex?.cat||null,catSet:!!ex,menu:false,paidBy:ex?.paidBy||lastPayer,for:new Set(ex?.for||P.map(p=>p.id))};
+  const f={cat:ex?.cat||null,catSet:!!ex,menu:false,ccMenu:false,cc:ex?.cc||S.cur,
+    paidBy:ex?.paidBy||(isNew&&me())||lastPayer,for:new Set(ex?.for||P.map(p=>p.id)),
+    photo:ex?.photo||0,newPhoto:null};
   const sc=$('#scrim');sc.hidden=false;
-  const pa=(p,on,attr)=>`<button type="button" class="pa" data-${attr}="${p.id}" aria-pressed="${on}" aria-label="${esc(p.name)}">${av(p.id,'lg')}<span class="pn">${esc(p.name.trim().split(/\s+/)[0])}</span></button>`;
+  const pa=(p,on,attr)=>`<button type="button" class="pa" data-${attr}="${p.id}" aria-pressed="${on}" aria-label="${esc(p.name)}">${av(p.id,'lg')}<span class="pn">${esc(first(p.name))}</span></button>`;
+  const foreign=()=>f.cc!==S.cur;
   const draw=()=>{
     const n=f.for.size,a=toPence($('#famt').value),c=f.cat;
+    const rate=parseFloat(String($('#frate').value).replace(',','.'));
+    const base=foreign()?(rate>0&&a>0?Math.round(a*rate):NaN):a;
     const cb=$('#catbtn');cb.className='catbtn'+(c?'':' none');cb.style.background=c?CAT_COL[c]:'';
     cb.innerHTML=ico('c-'+(c||'other'))+ico('i-chev','i caret');cb.setAttribute('aria-expanded',f.menu);
     $('#catmenu').hidden=!f.menu;
-    $('#catmenu').innerHTML=CATS.map(k=>`<button type="button" class="cat" data-cat="${k}" aria-pressed="${k===c}" aria-label="${k}" style="background:${CAT_COL[k]}">${ico('c-'+k)}</button>`).join('');
+    $('#catmenu').innerHTML=CATS.map(k=>`<button type="button" class="cat" data-cat="${k}" aria-pressed="${k===c}" aria-label="${CAT_NAME[k]}" style="background:${CAT_COL[k]}">${ico('c-'+k)}</button>`).join('');
+    $('#ccbtn').textContent=f.cc;$('#ccbtn').setAttribute('aria-expanded',f.ccMenu);
+    $('#ccmenu').hidden=!f.ccMenu;
+    $('#ccmenu').innerHTML=[S.cur,...CCS.filter(x=>x!==S.cur)].map(x=>`<button type="button" data-cc="${esc(x)}" aria-pressed="${x===f.cc}">${esc(x)}</button>`).join('');
+    $('#famt').placeholder=f.cc+'0.00';
+    $('#raterow').hidden=!foreign();
+    $('#rlab').textContent=`${f.cc}1 = ${S.cur}`;
+    $('#conv').textContent=foreign()&&base>0?`= ${money(base)}`:'';
     $('#paidChips').innerHTML=P.map(p=>pa(p,p.id===f.paidBy,'paid')).join('');
     $('#forChips').innerHTML=P.map(p=>pa(p,f.for.has(p.id),'for')).join('');
     $('#paidName').textContent=pname(f.paidBy);
     $('#forName').textContent=n===P.length?'Everyone':`${n} of ${P.length}`;
-    $('#each').textContent=n&&a>0?`${money(Math.round(a/n))} each`:'';
+    $('#each').textContent=n&&base>0?`${money(Math.round(base/n))} each`:'';
     $('#allBtn').textContent=n===P.length?'None':'All';
+    const src=f.newPhoto||(f.photo&&ex?photoSrc(ex.id,f.photo):null);
+    $('#photoArea').hidden=!src;
+    $('#photoArea').innerHTML=src?`<button type="button" class="thumb" id="thumb" aria-label="View receipt"><img src="${src}" alt="Receipt"></button><button type="button" class="ghost" id="rmPhoto">Remove photo</button>`:'';
   };
   sc.innerHTML=`<form class="sheet" id="eform" role="dialog" aria-label="${isNew?'Add':'Edit'} expense">
-    <div class="sh"><h3>${isNew?'New expense':'Edit expense'}</h3><input id="fdate" type="date" value="${ex?.date||today()}" aria-label="Date"></div>
-    <input id="famt" class="field big" inputmode="decimal" placeholder="${esc(S.cur)}0.00" value="${ex?(ex.amt/100).toFixed(2):''}" autocomplete="off" aria-label="Amount">
+    <div class="sh"><h3>${isNew?'New expense':'Edit expense'}</h3><div class="shr"><button type="button" class="iconbtn" id="camBtn" aria-label="Add receipt photo">${ico('i-cam')}</button><input id="fdate" type="date" value="${ex?.date||today()}" aria-label="Date"></div></div>
+    <input id="fphoto" type="file" accept="image/*" hidden>
+    <div class="thumbrow" id="photoArea" hidden></div>
+    <div class="amtrow"><button type="button" class="ccbtn" id="ccbtn" aria-label="Currency" aria-haspopup="true"></button><input id="famt" class="field big" inputmode="decimal" value="${ex?((ex.cc?ex.oamt:ex.amt)/100).toFixed(2):''}" autocomplete="off" aria-label="Amount"><div class="ccmenu" id="ccmenu" hidden></div></div>
+    <div class="raterow" id="raterow" hidden><span id="rlab"></span><input id="frate" class="field" inputmode="decimal" value="${ex?.rate||lastRate(f.cc)}" autocomplete="off" aria-label="Exchange rate"><span class="conv" id="conv"></span></div>
     <div class="descrow"><input id="fdesc" class="field" type="text" placeholder="What for?" value="${esc(ex?.desc||'')}" autocomplete="off" aria-label="Description"><button type="button" class="catbtn" id="catbtn" aria-label="Choose icon" aria-haspopup="true"></button><div class="catmenu" id="catmenu" hidden></div></div>
     <div class="lbl"><span>Paid by<em id="paidName"></em></span></div><div class="pick" id="paidChips"></div>
     <div class="lbl"><span>Split<em id="forName"></em></span><button type="button" id="allBtn"></button></div><div class="pick" id="forChips"></div>
     <div class="each" id="each"></div>
     <p class="msg" id="emsg"></p>
     <div class="foot">${isNew?'':'<button type="button" class="btn danger" id="del">Delete</button>'}<button class="btn primary">${isNew?'Add':'Save'}</button></div>
+    ${ex?.by?`<p class="by">Added by ${esc(pname(ex.by))}</p>`:''}
   </form>`;
   draw();if(isNew)setTimeout(()=>$('#famt').focus(),60);
-  let armed=false;
   sc.onclick=e=>{
     if(e.target===sc)return close();
-    if(e.target.closest('#catbtn')){f.menu=!f.menu;draw();return}
+    if(e.target.closest('#catbtn')){f.menu=!f.menu;f.ccMenu=false;draw();return}
+    if(e.target.closest('#ccbtn')){f.ccMenu=!f.ccMenu;f.menu=false;draw();return}
+    const cc=e.target.closest('[data-cc]');
+    if(cc){f.cc=cc.dataset.cc;f.ccMenu=false;if(f.cc!==S.cur&&!(ex&&ex.cc===f.cc))$('#frate').value=lastRate(f.cc);draw();if(f.cc!==S.cur&&!$('#frate').value)$('#frate').focus();return}
     const ct=e.target.closest('[data-cat]');if(ct){f.cat=ct.dataset.cat;f.catSet=true;f.menu=false;draw();return}
-    if(f.menu&&!e.target.closest('#catmenu')){f.menu=false;draw()}
+    if((f.menu&&!e.target.closest('#catmenu'))||(f.ccMenu&&!e.target.closest('#ccmenu'))){f.menu=f.ccMenu=false;draw()}
+    if(e.target.closest('#camBtn')){$('#fphoto').click();return}
+    if(e.target.closest('#thumb')){viewPhoto(f.newPhoto||photoSrc(ex.id,f.photo));return}
+    if(e.target.closest('#rmPhoto')){f.newPhoto=null;f.photo=0;draw();return}
     const pd=e.target.closest('[data-paid]');if(pd){f.paidBy=pd.dataset.paid;draw();return}
     const fr=e.target.closest('[data-for]');if(fr){const id=fr.dataset.for;f.for.has(id)?f.for.delete(id):f.for.add(id);draw();return}
     if(e.target.id==='allBtn'){f.for.size===P.length?f.for.clear():P.forEach(p=>f.for.add(p.id));draw();return}
-    if(e.target.id==='del'){if(!armed){armed=true;e.target.textContent='Tap to confirm';return}
-      ex.del=true;ex.u=now();save();close();render();toast('Deleted')}
+    if(e.target.id==='del'){close();removeExp(ex)}
   };
-  $('#famt').oninput=draw;
+  $('#fphoto').onchange=async e=>{const file=e.target.files[0];if(!file)return;
+    try{f.newPhoto=await compress(file);draw()}catch(err){toast('Couldn\'t read that photo')}};
+  $('#famt').oninput=draw;$('#frate').oninput=draw;
   $('#fdesc').oninput=e=>{if(!f.catSet){f.cat=matchCat(e.target.value)||null;draw()}};
   $('#eform').onsubmit=e=>{e.preventDefault();
     const a=toPence($('#famt').value),d=$('#fdesc').value.trim()||'Expense',dt=$('#fdate').value||today();
     if(!(a>0))return $('#emsg').textContent='Enter an amount.';
     if(!f.for.size)return $('#emsg').textContent='Pick who it\'s split between.';
-    const rec={desc:d,amt:a,date:dt,paidBy:f.paidBy,for:[...f.for],cat:f.cat||'other',u:now()};
-    if(isNew)S.expenses.push({id:uid(),...rec});else Object.assign(ex,rec);
+    let amt=a,cur={cc:null,oamt:null,rate:null};
+    if(foreign()){
+      const r=parseFloat(String($('#frate').value).replace(',','.'));
+      if(!(r>0)){$('#frate').focus();return $('#emsg').textContent=`Enter the rate: what ${f.cc}1 is in ${S.cur}.`}
+      amt=Math.round(a*r);cur={cc:f.cc,oamt:a,rate:r};prefs.rates=prefs.rates||{};prefs.rates[f.cc]=r;savePrefs();
+    }
+    const id=isNew?uid():ex.id;
+    let photo=f.photo;
+    if(f.newPhoto){photo=now();queuePhoto(id,photo,f.newPhoto)}
+    const rec={desc:d,amt,date:dt,paidBy:f.paidBy,for:[...f.for],cat:f.cat||'other',photo:photo||0,...cur,u:now()};
+    if(isNew)S.expenses.push({id,by:me()||null,...rec});else Object.assign(ex,rec);
     S.lastPayer=f.paidBy;open?.add(dt);
     save();close();tab='exp';render();toast(isNew?'Added':'Saved');
   };
+}
+const lastRate=cc=>{const e=S.expenses.filter(x=>!x.del&&x.cc===cc&&x.rate).sort((a,b)=>b.u-a.u)[0];return e?e.rate:((prefs.rates||{})[cc]||'')};
+
+/* ---- Payments: recorded as an expense of type "pay" (from paid, to's share = amount) so balances just work ---- */
+function openPay(ex,pre){
+  const P=people(),isNew=!ex;
+  const f={from:ex?.paidBy||pre?.from||me()||P[0].id};
+  f.to=ex?.for[0]||pre?.to||(P.find(p=>p.id!==f.from)||P[0]).id;
+  const sc=$('#scrim');sc.hidden=false;
+  const draw=()=>{
+    $('#fromChips').innerHTML=pickRow('pfrom',f.from);$('#toChips').innerHTML=pickRow('pto',f.to);
+    $('#fromName').textContent=pname(f.from);$('#toName').textContent=pname(f.to);
+  };
+  sc.innerHTML=`<form class="sheet" id="pform2" role="dialog" aria-label="${isNew?'Record':'Edit'} payment">
+    <div class="sh"><h3>${isNew?'Record payment':'Edit payment'}</h3><input id="pdate" type="date" value="${ex?.date||today()}" aria-label="Date"></div>
+    <input id="pamt" class="field big" inputmode="decimal" placeholder="${esc(S.cur)}0.00" value="${ex?(ex.amt/100).toFixed(2):pre?(pre.amt/100).toFixed(2):''}" autocomplete="off" aria-label="Amount">
+    <div class="lbl"><span>From<em id="fromName"></em></span></div><div id="fromChips"></div>
+    <div class="lbl"><span>To<em id="toName"></em></span></div><div id="toChips"></div>
+    <p class="msg" id="pmsg2"></p>
+    <div class="foot">${isNew?'':'<button type="button" class="btn danger" id="pdel">Delete</button>'}<button class="btn primary">${isNew?'Record payment':'Save'}</button></div>
+    ${ex?.by?`<p class="by">Added by ${esc(pname(ex.by))}</p>`:''}
+  </form>`;
+  draw();
+  sc.onclick=e=>{
+    if(e.target===sc)return close();
+    const fr=e.target.closest('[data-pfrom]');if(fr){f.from=fr.dataset.pfrom;draw();return}
+    const to=e.target.closest('[data-pto]');if(to){f.to=to.dataset.pto;draw();return}
+    if(e.target.id==='pdel'){close();removeExp(ex)}
+  };
+  $('#pform2').onsubmit=e=>{e.preventDefault();
+    const a=toPence($('#pamt').value);
+    if(!(a>0))return $('#pmsg2').textContent='Enter an amount.';
+    if(f.from===f.to)return $('#pmsg2').textContent='Pick two different people.';
+    const rec={type:'pay',desc:'Payment',amt:a,date:$('#pdate').value||today(),paidBy:f.from,for:[f.to],cat:'other',u:now()};
+    if(isNew)S.expenses.push({id:uid(),by:me()||null,...rec});else Object.assign(ex,rec);
+    open?.add(rec.date);save();close();render();toast(isNew?'Payment recorded':'Saved');
+  };
+}
+
+/* ---- Receipt photos: compressed on the phone, kept locally until uploaded to /api/photo/<trip>/<expense> ---- */
+const PH='hs-photo-';
+function compress(file){return new Promise((res,rej)=>{
+  const img=new Image(),url=URL.createObjectURL(file);
+  img.onload=()=>{const k=Math.min(1,1400/Math.max(img.width,img.height)),c=document.createElement('canvas');
+    c.width=Math.round(img.width*k);c.height=Math.round(img.height*k);c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+    URL.revokeObjectURL(url);res(c.toDataURL('image/jpeg',0.7))};
+  img.onerror=()=>{URL.revokeObjectURL(url);rej()};img.src=url;
+})}
+function queuePhoto(id,v,data){
+  try{localStorage.setItem(PH+id,JSON.stringify({t:S.id,v,data}))}catch(e){toast('Phone storage is full. Photo not saved.')}
+  uploadPhotos();
+}
+function localPhoto(id,v){try{const x=JSON.parse(localStorage.getItem(PH+id));return x&&x.v===v?x.data:null}catch(e){return null}}
+const photoSrc=(id,v)=>localPhoto(id,v)||`/api/photo/${S.id}/${id}?v=${v}`;
+const dataBlob=d=>{const b=atob(d.split(',')[1]),u=new Uint8Array(b.length);for(let i=0;i<b.length;i++)u[i]=b.charCodeAt(i);return new Blob([u],{type:'image/jpeg'})};
+let uploading=false;
+async function uploadPhotos(){
+  if(!syncAvail||!prefs.sync||uploading)return;uploading=true;
+  const keys=[];for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith(PH))keys.push(k)}
+  for(const k of keys){
+    try{const x=JSON.parse(localStorage.getItem(k)),id=k.slice(PH.length),url=`/api/photo/${x.t}/${id}`;
+      const r=await fetch(url,{method:'PUT',headers:{'content-type':'image/jpeg'},body:dataBlob(x.data)});
+      if(r.ok){localStorage.removeItem(k);fetch(`${url}?v=${x.v}`).catch(()=>{})}
+    }catch(e){break}
+  }
+  uploading=false;
+}
+function viewPhoto(src){
+  const v=document.createElement('div');v.className='viewer';
+  v.innerHTML=`<img src="${src}" alt="Receipt photo. Needs signal if it hasn't loaded before."><button class="iconbtn" aria-label="Close">${ico('i-x')}</button>`;
+  v.onclick=()=>v.remove();document.body.appendChild(v);
+}
+
+/* ---- Spreadsheet export ---- */
+function exportCsv(){
+  const q=v=>{v=String(v??'');return /[",\r\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v},n=p=>(p/100).toFixed(2),P=people();
+  const head=['Date','Description','Type','Category','Paid by',`Amount (${S.cur})`,'Original currency','Original amount','Rate','Split between',...P.map(p=>`${p.name} share`)];
+  const rows=expenses().slice().reverse().map(e=>{const pay=isPay(e),sh=pay?{}:shares(e);
+    return [e.date,pay?`${pname(e.paidBy)} paid ${pname(e.for[0])}`:e.desc,pay?'Payment':'Expense',pay?'':CAT_NAME[e.cat],pname(e.paidBy),n(e.amt),e.cc||'',e.cc?n(e.oamt):'',e.rate||'',e.for.map(pname).join('; '),...P.map(p=>sh[p.id]?n(sh[p.id]):'')]});
+  const csv='﻿'+[head,...rows].map(r=>r.map(q).join(',')).join('\r\n');
+  const name=(S.name.replace(/[^\w\- ]+/g,'').trim()||'trip')+'.csv';
+  const file=new File([csv],name,{type:'text/csv'});
+  if(navigator.canShare&&navigator.canShare({files:[file]}))return navigator.share({files:[file],title:S.name}).catch(()=>{});
+  const a=document.createElement('a');a.href=URL.createObjectURL(file);a.download=name;document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href),5000);toast('Spreadsheet saved');
 }
 
 function openSettings(){
@@ -581,8 +816,9 @@ function openSettings(){
   const trips=prefs.trips.map(t=>`<button class="trip" data-trip="${esc(t.id)}"><span>${esc(t.id===S.id?S.name:t.name)}</span>${t.id===S.id?ico('i-check'):''}</button>`).join('');
   sc.innerHTML=`<div class="sheet" role="dialog" aria-label="Settings">
     <div class="sh"><h3>Settings</h3><button class="iconbtn" id="sclose" aria-label="Close">${ico('i-x')}</button></div>
+    ${people().length?`<div class="set"><div class="col"><label>You are<small>Shows what you owe and are owed on this phone</small></label>${pickRow('me',me())}</div></div>`:''}
     <div class="set">
-      <div><label for="scur">Currency</label><input id="scur" class="field cur" type="text" maxlength="3" value="${esc(S.cur)}"></div>
+      <div><label for="scur">Trip currency</label><input id="scur" class="field cur" type="text" maxlength="3" value="${esc(S.cur)}"></div>
       <div><label for="ssync">Sync with group<small class="status">${status}</small></label><input id="ssync" class="sw" type="checkbox" role="switch" ${prefs.sync?'checked':''} ${syncAvail?'':'disabled'}></div>
     </div>
     <div class="set"><div class="col"><label for="simp">Import expenses<small>Paste import text into this trip</small></label>
@@ -626,6 +862,8 @@ function importData(txt){
 function close(){const sc=$('#scrim');sc.hidden=true;sc.innerHTML=''}
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('#scrim').hidden)close()});
 window.addEventListener('hashchange',checkHash);
+/* offline: register the service worker on the hosted app only */
+ready.then(()=>{if(syncAvail&&'serviceWorker' in navigator)navigator.serviceWorker.register('/sw.js').catch(()=>{})});
 render();checkHash();
 </script>
 </body>
