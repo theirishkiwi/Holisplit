@@ -1,7 +1,9 @@
 // Holiday Split sync API. Static files in ./public are served automatically;
 // this Worker only handles /api/*. Each trip is one JSON value in KV, keyed by its random id.
 const TRIP_ID = /^[a-z0-9]{12,40}$/;
+const ITEM_ID = /^[A-Za-z0-9_-]{2,40}$/;
 const MAX_BYTES = 512 * 1024;
+const MAX_PHOTO = 3 * 1024 * 1024;
 const KEEP_FOR = 60 * 60 * 24 * 365; // a trip is removed a year after its last change
 const H = { 'content-type': 'application/json', 'cache-control': 'no-store' };
 const json = (o, status = 200) => new Response(JSON.stringify(o), { status, headers: H });
@@ -34,6 +36,29 @@ export default {
   async fetch(req, env) {
     const url = new URL(req.url);
     if (url.pathname === '/api/ping') return json({ ok: true });
+
+    // Receipt photos: one JPEG per expense, stored next to the trip
+    const pm = url.pathname.match(/^\/api\/photo\/([^/]+)\/([^/]+)$/);
+    if (pm) {
+      const [, trip, item] = pm;
+      if (!TRIP_ID.test(trip) || !ITEM_ID.test(item)) return json({ error: 'bad id' }, 400);
+      const pkey = `photo:${trip}:${item}`;
+      if (req.method === 'GET') {
+        const img = await env.TRIPS.get(pkey, { type: 'arrayBuffer' });
+        if (!img) return json({ error: 'not found' }, 404);
+        return new Response(img, { headers: { 'content-type': 'image/jpeg', 'cache-control': 'private, max-age=31536000' } });
+      }
+      if (req.method === 'PUT') {
+        const buf = await req.arrayBuffer();
+        if (buf.byteLength > MAX_PHOTO) return json({ error: 'too large' }, 413);
+        const b = new Uint8Array(buf);
+        if (b.length < 3 || b[0] !== 0xff || b[1] !== 0xd8) return json({ error: 'not a jpeg' }, 400);
+        await env.TRIPS.put(pkey, buf, { expirationTtl: KEEP_FOR });
+        return json({ ok: true });
+      }
+      if (req.method === 'DELETE') { await env.TRIPS.delete(pkey); return json({ ok: true }); }
+      return json({ error: 'method not allowed' }, 405);
+    }
 
     const m = url.pathname.match(/^\/api\/trip\/([^/]+)$/);
     if (!m) return env.ASSETS ? env.ASSETS.fetch(req) : json({ error: 'not found' }, 404);
