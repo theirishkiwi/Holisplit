@@ -210,6 +210,10 @@ a.paidbtn{text-decoration:none;display:inline-block}
 .f2{display:flex;flex-direction:column;gap:6px;font-size:.78rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600}
 .f2 .field{text-transform:none;letter-spacing:0;font-size:1rem;color:var(--fg);font-weight:400}
 .two2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.acts2{display:flex;gap:6px;flex:none}.acts2 .btn{padding:9px 12px}
+.warnbox{display:flex;flex-direction:column;gap:6px;background:var(--note);color:var(--note-ink);border-radius:14px;padding:12px 14px;font-size:.92rem}
+.btn.danger.solid{background:var(--neg);color:#fff}
+.btn:disabled{opacity:.4;cursor:not-allowed}
 .paidtoggle{border:0;background:var(--wa);color:var(--wa-ink);border-radius:999px;padding:4px 10px 4px 8px;font-size:.78rem;font-weight:700;display:inline-flex;align-items:center;gap:4px}
 .paidtoggle svg.i{stroke-width:2.6}
 .paidbtn{border:1.5px solid var(--line);background:transparent;color:var(--fg);border-radius:999px;padding:3px 10px;font-size:.78rem;font-weight:700}
@@ -423,17 +427,19 @@ async function sync(){
   if(syncing){again=true;return}
   syncing=true;setNet('sync');
   const trip=S,sent=seq,hdr={'content-type':'application/json'};
-  const gone=()=>{if(S===trip){S.revoked=true;persist();render()}setNet('off')};
+  const gone=async r=>{let why='';try{why=(await r.json()).error}catch(e){}
+    if(why==='erased'){eraseLocal(trip.id);toast(`${trip.name} was permanently deleted`);setNet(syncOn()?'ok':'off');return}
+    if(S===trip){S.revoked=true;persist();render()}setNet('off')};
   try{
     if(trip.key){
       /* encrypted: pull + merge on the phone, then push with the revision we merged from; 409 = someone else saved first */
       let r=await fetch(api(trip.id),{cache:'no-store'}),remote=null;
-      if(r.status===410)return gone();
+      if(r.status===410)return gone(r);
       if(r.ok){const env=await r.json();remote=await decTrip(env,trip.key);trip.rev=env.rev;if(S===trip)mergeIn(remote)}
       else if(r.status!==404)throw new Error(r.status);
       for(let i=0;i<4&&(trip.dirty||ahead(trip,remote));i++){
         r=await fetch(api(trip.id),{method:'PUT',headers:hdr,body:JSON.stringify(await encTrip(trip))});
-        if(r.status===410)return gone();
+        if(r.status===410)return gone(r);
         if(r.status===409){const env=(await r.json()).current;remote=await decTrip(env,trip.key);trip.rev=env.rev;if(S===trip)mergeIn(remote);continue}
         if(!r.ok)throw new Error(r.status);
         trip.rev=(await r.json()).rev;if(seq===sent)trip.dirty=false;if(S===trip)persist();break;
@@ -442,7 +448,7 @@ async function sync(){
       const put=()=>fetch(api(trip.id),{method:'PUT',headers:hdr,body:JSON.stringify(tripOut(trip))});
       let r=trip.dirty?await put():await fetch(api(trip.id),{cache:'no-store'});
       if(r.status===404)r=await put();
-      if(r.status===410)return gone();
+      if(r.status===410)return gone(r);
       if(!r.ok)throw new Error(r.status);
       const remote=await r.json();
       if(S===trip){if(seq===sent)S.dirty=false;mergeIn(remote);if(ahead(S,remote)){S.dirty=true;again=true}}
@@ -647,6 +653,45 @@ function restoreTrip(id){
   switchTo(t);
   if(S.del){S.del=null;S.delBy=null;S.du=now();save()}
   render();toast(`Restored ${S.name}`);
+}
+/* ---- Delete permanently: no restore. Typing DELETE is required ---- */
+function eraseLocal(id){
+  try{localStorage.removeItem(TK(id))}catch(e){}
+  const keys=[];for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith(PH))keys.push(k)}
+  keys.forEach(k=>{try{if(JSON.parse(localStorage.getItem(k)).t===id)localStorage.removeItem(k)}catch(e){}});
+  prefs.trips=prefs.trips.filter(t=>t.id!==id);if(prefs.me)delete prefs.me[id];
+  if(pendingPay&&pendingPay.trip===id)setPending(null);
+  savePrefs();
+  if(S.id===id)leaveTo();else render();
+}
+async function eraseTrip(id){
+  const t=loadTrip(id),name=(t&&t.name)||'Trip',forAll=!!(t&&t.del);
+  if(forAll){
+    await ready;
+    if(!syncAvail)return toast('Deleting permanently needs a connection');
+    let r;try{r=await fetch(api(id),{method:'DELETE'})}catch(e){return toast('No connection. Try again.')}
+    if(r.status===409)return toast(`Someone restored ${name}, so it wasn't deleted`);
+    if(!(r.ok||r.status===404||r.status===410))return toast('Couldn\'t delete. Try again.');
+  }
+  eraseLocal(id);toast(`${name} permanently deleted`);
+}
+function openErase(id){
+  const t=loadTrip(id),l=prefs.trips.find(x=>x.id===id),name=(t&&t.name)||(l&&l.name)||'this trip',forAll=!!(t&&t.del);
+  const sc=openScrim();
+  sc.innerHTML=`<form class="sheet" id="eraseform" role="dialog" aria-label="Delete permanently">
+    <div class="sh"><button type="button" class="iconbtn" data-dismiss aria-label="Cancel">${ico('i-down')}</button><h3>Delete permanently?</h3></div>
+    <div class="warnbox"><b>“${esc(name)}” will be gone for good.</b>
+      <span>${forAll?'This erases the trip and its receipt photos for everyone in the group, straight away. It can\'t be restored.'
+        :'This removes it from this phone for good. The group\'s copy isn\'t affected; you\'d need the invite link to get it back.'}</span></div>
+    <label class="f2" for="erasebox">Type DELETE to confirm<input id="erasebox" class="field" autocomplete="off" autocapitalize="characters" spellcheck="false"></label>
+    <button class="btn danger solid" id="erasego" disabled>Delete permanently</button>
+    <button type="button" class="btn" data-dismiss>Cancel</button>
+  </form>`;
+  const ok=()=>$('#erasebox').value.trim().toLowerCase()==='delete';
+  $('#erasebox').oninput=()=>{$('#erasego').disabled=!ok()};
+  sc.onclick=e=>{if(e.target===sc)close()};
+  $('#eraseform').onsubmit=e=>{e.preventDefault();if(!ok())return;close();eraseTrip(id)};
+  setTimeout(()=>$('#erasebox')?.focus(),80);
 }
 function openDelete(){
   const sc=openScrim();
@@ -1146,9 +1191,9 @@ function exportCsv(){
 function openSettings(){
   const sc=openScrim();
   const status=!syncAvail?'Sync works in the hosted app only':S.sample?'The example trip isn\'t synced':({ok:'Synced',sync:'Syncing…',offline:'Offline. Changes sync when you\'re back online.'}[$('#cloud').dataset.s]||'')+(S.key?' · encrypted':'');
-  const live=prefs.trips.filter(t=>!goneAt(t)),gone=prefs.trips.filter(t=>goneAt(t)&&t.id!==S.id);
+  const live=prefs.trips.filter(t=>!goneAt(t)),gone=prefs.trips.filter(t=>goneAt(t));
   const trips=live.map(t=>`<button class="trip" data-trip="${esc(t.id)}"><span>${esc(t.id===S.id?S.name:t.name)}</span>${t.id===S.id?ico('i-check'):''}</button>`).join('')+(S.del?`<button class="trip" data-trip="${esc(S.id)}"><span>${esc(S.name)} (deleted)</span>${ico('i-check')}</button>`:'');
-  const deleted=gone.map(t=>`<div><label>${esc(t.name)}<small>${t.del?'Deleted for everyone':'Removed from this phone'} · ${daysLeft(t)} day${daysLeft(t)===1?'':'s'} left</small></label><button class="btn primary" data-restore="${esc(t.id)}">Restore</button></div>`).join('');
+  const deleted=gone.map(t=>`<div><label>${esc(t.name)}<small>${t.del?'Deleted for everyone':'Removed from this phone'} · ${daysLeft(t)} day${daysLeft(t)===1?'':'s'} left</small></label><span class="acts2"><button class="btn primary" data-restore="${esc(t.id)}">Restore</button><button class="btn danger" data-erase="${esc(t.id)}" aria-label="Delete ${esc(t.name)} permanently">Delete</button></span></div>`).join('');
   sc.innerHTML=`<div class="sheet" role="dialog" aria-label="Settings">
     <div class="sh"><button class="iconbtn" id="sclose" aria-label="Close">${ico('i-down')}</button><h3>Settings</h3></div>
     ${people().length?`<div class="set"><div class="col"><label>You are<small>Shows what you owe and are owed on this phone</small></label>${pickRow('me',me())}</div></div>`:''}
@@ -1174,6 +1219,7 @@ function openSettings(){
     if(e.target.closest('#snew')){close();newTrip()}
     if(e.target.closest('#sdel')){openDelete();return}
     const rr=e.target.closest('[data-restore]');if(rr){close();restoreTrip(rr.dataset.restore);return}
+    const er=e.target.closest('[data-erase]');if(er){openErase(er.dataset.erase);return}
     const rs=e.target.closest('#sreset');if(rs){if(rs.dataset.armed){close();resetLink()}else{rs.dataset.armed=1;rs.textContent='Tap to confirm'}return}
     if(e.target.closest('#simpgo')){const t=$('#simp').value;if(importData(t))close()}
   };

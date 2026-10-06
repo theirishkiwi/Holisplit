@@ -9,6 +9,9 @@ const KEEP_DELETED = 60 * 60 * 24 * 30; // a deleted trip can be restored for 30
 const H = { 'content-type': 'application/json', 'cache-control': 'no-store' };
 // A reset link leaves this marker at the old ID: the old link stops working and reveals nothing
 const REVOKED = '{"revoked":true}';
+// A permanently deleted trip leaves this marker so no phone's old copy can bring it back
+const ERASED = '{"erased":true}';
+const goneFor = v => v === REVOKED ? json({ error: 'link reset' }, 410) : v === ERASED ? json({ error: 'erased' }, 410) : null;
 const gone = () => json({ error: 'link reset' }, 410);
 const json = (o, status = 200) => new Response(JSON.stringify(o), { status, headers: H });
 
@@ -65,7 +68,7 @@ export default {
       }
       if (req.method === 'PUT') {
         const rec = await env.TRIPS.get('trip:' + trip);
-        if (rec === REVOKED) return gone();
+        if (goneFor(rec)) return goneFor(rec);
         const buf = await req.arrayBuffer();
         if (buf.byteLength > MAX_PHOTO) return json({ error: 'too large' }, 413);
         const b = new Uint8Array(buf);
@@ -88,7 +91,7 @@ export default {
       try { ({ to } = await req.json()); } catch { return json({ error: 'bad json' }, 400); }
       if (!TRIP_ID.test(from) || !TRIP_ID.test(to) || from === to) return json({ error: 'bad id' }, 400);
       const [oldT, newT] = await Promise.all([env.TRIPS.get('trip:' + from), env.TRIPS.get('trip:' + to)]);
-      if (oldT === REVOKED) return gone();
+      if (goneFor(oldT)) return goneFor(oldT);
       if (!newT) return json({ error: 'new trip not found' }, 404);
       const next = JSON.parse(newT);
       if (next.prev !== from) return json({ error: 'new trip does not continue this one' }, 400);
@@ -122,7 +125,7 @@ export default {
 
     if (req.method === 'GET') {
       const t = await env.TRIPS.get(key);
-      if (t === REVOKED) return gone();
+      if (goneFor(t)) return goneFor(t);
       return t ? new Response(t, { headers: H }) : json({ error: 'not found' }, 404);
     }
 
@@ -132,7 +135,7 @@ export default {
       let inc;
       try { inc = JSON.parse(body); } catch { return json({ error: 'bad json' }, 400); }
       const current = await env.TRIPS.get(key);
-      if (current === REVOKED) return gone();
+      if (goneFor(current)) return goneFor(current);
 
       if (isEnc(inc)) {
         if (inc.id !== id) return json({ error: 'bad trip' }, 400);
@@ -154,6 +157,23 @@ export default {
       const merged = JSON.stringify(m);
       if (merged !== current) await env.TRIPS.put(key, merged, { expirationTtl: m.del ? KEEP_DELETED : KEEP_FOR });
       return new Response(merged, { headers: H });
+    }
+
+    if (req.method === 'DELETE') {
+      const current = await env.TRIPS.get(key);
+      if (goneFor(current)) return goneFor(current);
+      if (!current) return json({ error: 'not found' }, 404);
+      const t = parse(current);
+      if (!t || !t.del) return json({ error: 'delete it for everyone first' }, 409);
+      const prefix = `photo:${id}:`;
+      let cursor;
+      do {
+        const page = await env.TRIPS.list({ prefix, cursor });
+        for (const k of page.keys) await env.TRIPS.delete(k.name);
+        cursor = page.list_complete ? null : page.cursor;
+      } while (cursor);
+      await env.TRIPS.put(key, ERASED, { expirationTtl: KEEP_DELETED });
+      return json({ ok: true });
     }
 
     return json({ error: 'method not allowed' }, 405);
