@@ -26,7 +26,7 @@ test('parseScan: reads messy model replies and rejects nonsense', async () => {
   const { parseScan } = await W();
   const p = t => parseScan(t, TODAY);
   const r = p('```json\n{"total":"33,00","currency":"EUR","date":"' + ddmmyyyy(daysAgo(1)) + '","merchant":"EUROSPIN ITALIA","type":"Supermarket"}\n```');
-  assert.deepEqual(r, { total: 33, cur: '€', date: daysAgo(1), merchant: 'EUROSPIN ITALIA', cat: 'groceries' });
+  assert.deepEqual(r, { total: 33, cur: '€', date: daysAgo(1), merchant: 'EUROSPIN ITALIA', what: null, cat: 'groceries' });
   assert.equal(p('{"total":1234.5,"type":"Café"}').cat, 'drinks');
   assert.equal(p('{"total":"1.234,50","type":"restaurant"}').total, 1234.5);
   assert.equal(p('{"total":12,"currency":"GBP","type":"spaceship"}').cur, '£');
@@ -79,7 +79,7 @@ async function phone(reply) {
   const { default: worker } = await W();
   const ai = fakeAI(reply), env = { TRIPS: kv(), AI: ai }, P = load({ fetch: workerFetch(worker, env) });
   await tick(60);
-  P.run(`compress=async()=>'data:image/jpeg;base64,/9j/4AAQ';                // no canvas in the test browser
+  P.run(`compress=async()=>'data:image/jpeg;base64,/9j/4AAQ';imgDims=async()=>[843,1120];turnData=async d=>d+'TURNED';   // no canvas in the test browser
     S=blank();S.name='Tuscany';S.cur='€';S.people.push({id:'c',name:'Chris',c:0,u:1},{id:'s',name:'Sam',c:1,u:1});prefs.me={[S.id]:'c'};save()`);
   await P.run('sync()');
   return { P, ai, env };
@@ -193,5 +193,50 @@ test('the app shows the reason when a scan fails', async () => {
     P.run(`document.querySelector('#add').click()`);
     await photo(P); await tick(50);
     assert.match($(P, '#scanmsg').textContent, /Couldn't read the receipt.*Read: The image is too blurry/s);
+  } finally { P.w.close(); }
+});
+
+test('parseScan: card slips — bank names are not the shop; "what" describes the purchase', async () => {
+  const { parseScan } = await W();
+  const r = parseScan('{"total":29.69,"currency":"EUR","merchant":"NEXI","what":"Groceries","type":"other"}', TODAY);
+  assert.equal(r.merchant, null, 'payment company dropped');
+  assert.equal(r.what, 'Groceries');
+  assert.equal(parseScan('{"total":3,"merchant":"unknown","what":"null"}', TODAY).what, null);
+});
+
+test('"What for?" is filled from the shop, else the description, else the type of place', async () => {
+  let reply;
+  const { P } = await phone(() => reply);
+  try {
+    const scan = async r => { reply = r; P.run(`document.querySelector('#add').click()`); await photo(P); await tick(50);
+      const v = $(P, '#fdesc').value; P.run(`document.querySelector('[data-dismiss]').click()`); await tick(450); return v; };
+    assert.equal(await scan('{"total":29.69,"merchant":"CONAD CITY","what":"Groceries","type":"supermarket"}'), 'Conad City');
+    assert.equal(await scan('{"total":29.69,"merchant":null,"what":"lunch","type":"restaurant"}'), 'Lunch');
+    assert.equal(await scan('{"total":29.69,"merchant":"Intesa Sanpaolo","what":null,"type":"cafe"}'), 'Drinks');
+  } finally { P.w.close(); }
+});
+
+test('a sideways photo with no shop name is turned and read again', async () => {
+  let n = 0;
+  const { P, ai } = await phone(() => ++n === 1 ? '{"total":29.69,"currency":"EUR","merchant":null,"what":"Groceries","type":"other"}'
+    : `{"total":29.69,"currency":"EUR","date":"${daysAgo(0)}","merchant":"EUROSPIN","what":"Groceries","type":"supermarket"}`);
+  try {
+    P.run(`imgDims=async()=>[1120,843]`);                                     // wide photo of a tall receipt
+    P.run(`document.querySelector('#add').click()`);
+    await photo(P); await tick(80);
+    assert.equal(n, 2, 'read twice');
+    assert.equal($(P, '#fdesc').value, 'Eurospin');
+    assert.match(P.w.eval('document.querySelector("#thumbImg")?.src||""'), /TURNED/, 'upright photo kept');
+  } finally { P.w.close(); }
+});
+
+test('a tall photo is not read twice', async () => {
+  let n = 0;
+  const { P } = await phone(() => (n++, '{"total":5,"merchant":null,"what":"Coffee","type":"cafe"}'));
+  try {
+    P.run(`document.querySelector('#add').click()`);
+    await photo(P); await tick(60);
+    assert.equal(n, 1);
+    assert.equal($(P, '#fdesc').value, 'Coffee');
   } finally { P.w.close(); }
 });
