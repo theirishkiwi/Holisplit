@@ -268,6 +268,7 @@ a.paidbtn{text-decoration:none;display:inline-block}
 .duppanel{background:var(--note);color:var(--note-ink);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:6px;font-size:.9rem}
 .duppanel i{font-style:normal;opacity:.8}
 .dupacts{display:flex;gap:8px;margin-top:4px}.dupacts .btn{flex:1;padding:11px}
+.scanwhy{display:block;margin-top:4px;font-size:.75rem;opacity:.7;word-break:break-word}
 .dupwarn{display:block;margin-top:6px;color:var(--note-ink);background:var(--note);border-radius:8px;padding:6px 8px}
 .dupnote{display:flex;align-items:center;justify-content:space-between;width:100%;border:0;background:var(--note);color:var(--note-ink);border-radius:14px;padding:11px 14px;margin-top:12px;font:500 .92rem var(--body)}
 .duppair{background:var(--card);border-radius:16px;padding:12px;display:flex;flex-direction:column;gap:8px}
@@ -1334,7 +1335,11 @@ async function scanReceipt(file,f,draw){
     const small=await compress(file,1120,0.8);
     const r=await fetch('/api/scan/'+S.id,{method:'POST',headers:{'content-type':'image/jpeg'},body:dataBlob(small)});
     if(!$('#eform'))return;                                          /* sheet closed meanwhile */
-    if(!r.ok){const why=((await r.json().catch(()=>({})))||{}).error;return fail(why==='daily scan limit reached'?'Daily scan limit reached for this trip. Enter the details yourself.':null)}
+    if(!r.ok){const j=(await r.json().catch(()=>({})))||{},why=j.error,det=j.detail?`<small class="scanwhy">${esc(why==='unreadable'?'Read: '+j.detail:j.detail)}</small>`:'';
+      if(why==='daily scan limit reached')return fail('Daily scan limit reached for this trip. Enter the details yourself.');
+      if(r.status===503)return fail('Receipt reading isn\'t available right now. Enter the details yourself.'+det);
+      if(why==='trip not found')return fail('This trip isn\'t saved online yet, so it can\'t read receipts. Enter the details yourself.');
+      return fail('Couldn\'t read the receipt. Enter the details yourself.'+(det||`<small class="scanwhy">Error ${r.status}${why?' · '+esc(why):''}</small>`))}
     applyScan(await r.json(),f,draw,show);
   }catch(e){if($('#eform'))fail(navigator.onLine===false?'Scanning needs signal. Enter the details yourself.':null)}
 }

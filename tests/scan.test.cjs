@@ -50,8 +50,8 @@ test('worker /api/scan: accepts the licence once, returns total, date, type; cou
   assert.ok(ai.calls.some(c => c.input.prompt === 'agree'), 'licence accepted automatically');
   const call = ai.calls.at(-1);
   assert.equal(call.model, '@cf/meta/llama-3.2-11b-vision-instruct');
-  assert.match(call.input.image, /^data:image\/jpeg;base64,/);
-  assert.ok(call.input.max_tokens <= 200, 'short answer keeps cost down');
+  assert.ok(Array.isArray(call.input.image) && call.input.image[0] === 0xff, 'image sent as bytes');
+  assert.ok(call.input.max_tokens <= 300, 'short answer keeps cost down');
   assert.ok(![...env.TRIPS.m.keys()].some(k => k.startsWith('photo:')), 'photo not stored');
   env.TRIPS.m.set(`scan:${id}:${TODAY}`, '100');
   assert.equal((await scan()).status, 429, 'daily cap per trip');
@@ -153,5 +153,37 @@ test('scanning a receipt that is already in the trip warns straight away', async
     P.run(`document.querySelector('#add').click()`);
     await photo(P); await tick(50);
     assert.match($(P, '#scanmsg').textContent, /Looks like Eurospin €33\.00 .* Sam paid\. Check it isn't a duplicate/);
+  } finally { P.w.close(); }
+});
+
+test('worker /api/scan: copes with object replies, broken JSON, and image-format refusals; explains failures', async () => {
+  const { default: worker, scanText } = await W();
+  const id = 'r'.repeat(20);
+  const env = reply => { const e = { TRIPS: kv(), AI: reply }; e.TRIPS.m.set('trip:' + id, JSON.stringify({ v: 2, id, rev: 1, enc: 'x' })); return e; };
+  const call = async e => { const r = await worker.fetch(new Request('https://x/api/scan/' + id, { method: 'POST', body: JPEG }), e); return [r.status, await r.json()]; };
+  // reply already parsed into an object
+  let [st, j] = await call(env({ run: async () => ({ response: { total: 65.9, currency: 'EUR', merchant: 'Vasari Cafe', type: 'cafe' } }) }));
+  assert.equal(st, 200); assert.equal(j.total, 65.9); assert.equal(j.cat, 'drinks');
+  // Italian decimal comma makes invalid JSON
+  [st, j] = await call(env({ run: async () => ({ response: '{"total": 65,90, "currency": "EUR", "merchant": "Vasari Cafe", "type": "cafe"}' }) }));
+  assert.equal(st, 200); assert.equal(j.total, 65.9, 'not 6590');
+  // account wants the image as a string: retried as a data URL
+  const seen = [];
+  [st, j] = await call(env({ run: async (m, inp) => { seen.push(typeof inp.image); if (Array.isArray(inp.image)) throw new Error('Type mismatch of \'/image\''); return { response: '{"total":9}' }; } }));
+  assert.equal(st, 200); assert.deepEqual(seen, ['object', 'string']);
+  // failures say why
+  [st, j] = await call(env({ run: async () => ({ response: 'The image is too blurry to read.' }) }));
+  assert.equal(st, 422); assert.match(j.detail, /too blurry/);
+  [st, j] = await call(env({ run: async () => { throw new Error('3036: account limited'); } }));
+  assert.equal(st, 503); assert.match(j.detail, /account limited/);
+  assert.equal(scanText({ result: { response: 'hi' } }), 'hi');
+});
+
+test('the app shows the reason when a scan fails', async () => {
+  const { P } = await phone('The image is too blurry to read.');
+  try {
+    P.run(`document.querySelector('#add').click()`);
+    await photo(P); await tick(50);
+    assert.match($(P, '#scanmsg').textContent, /Couldn't read the receipt.*Read: The image is too blurry/s);
   } finally { P.w.close(); }
 });

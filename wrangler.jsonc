@@ -11,6 +11,10 @@
   "ai": {
     "binding": "AI"
   },
+  // Keep logs for a few days (Workers & Pages → holiday-split → Observability / Logs)
+  "observability": {
+    "enabled": true
+  },
   "kv_namespaces": [
     {
       "binding": "TRIPS",
