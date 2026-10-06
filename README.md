@@ -6,7 +6,7 @@ wrangler.jsonc     config: static assets + KV namespace "TRIPS"
 
 ## Tests
 npm install
-npm test      (77 tests: split maths, settling, couples, payments, currencies, amount entry, dates, worker sync, photos, link reset, encryption, delete and restore, closing screens, paid toggle, payment links, permanent delete, layout, receipt scanning, duplicate checks)
+npm test      (85 tests: split maths, settling, couples, joint accounts, payments, currencies, amount entry, dates, worker sync, photos, link reset, encryption, delete and restore, closing screens, paid toggle, payment links, permanent delete, layout, receipt scanning, duplicate checks)
 
 ## Deploy (one time)
 1. npx wrangler login
@@ -28,6 +28,14 @@ Settings -> Recently deleted (or the banner on the trip) for 30 days. After that
 and the server copy expires.
 To remove one sooner, tap Delete next to it in Recently deleted and type DELETE. A trip deleted
 for everyone is then erased from the server with its photos, and no phone can bring it back.
+
+## Couples and joint accounts
+Pair two people as a couple in Group (tap a person). Couples settle up with the group as one, so there are fewer payments. Each expense still shows each person's own share ("you owe €3.38").
+
+If the couple shares money, e.g. a joint Monzo account, switch on **Joint account** in either partner's menu:
+- Each expense counts the two of you together, whoever paid. If Leanne pays €200 for 8 people, Chris sees "you're owed €150.00" (the other six people's shares), not "you owe €25.00".
+- You always settle as one, even when Settle up is set to Everyone, so there's never a payment between partners.
+- It's saved on both people and syncs to everyone. Unpairing turns it off.
 
 ## Paying
 Each person can add Monzo, Revolut or Starling Settle Up names and UK bank details
