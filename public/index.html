@@ -265,6 +265,15 @@ a.paidbtn{text-decoration:none;display:inline-block}
 .scanmsg.busy{animation:scanpulse 1.4s ease-in-out infinite}
 @keyframes scanpulse{50%{opacity:.65}}
 @media (prefers-reduced-motion:reduce){.scanmsg.busy{animation:none}}
+.duppanel{background:var(--note);color:var(--note-ink);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:6px;font-size:.9rem}
+.duppanel i{font-style:normal;opacity:.8}
+.dupacts{display:flex;gap:8px;margin-top:4px}.dupacts .btn{flex:1;padding:11px}
+.dupwarn{display:block;margin-top:6px;color:var(--note-ink);background:var(--note);border-radius:8px;padding:6px 8px}
+.dupnote{display:flex;align-items:center;justify-content:space-between;width:100%;border:0;background:var(--note);color:var(--note-ink);border-radius:14px;padding:11px 14px;margin-top:12px;font:500 .92rem var(--body)}
+.duppair{background:var(--card);border-radius:16px;padding:12px;display:flex;flex-direction:column;gap:8px}
+.dupwhy{font-size:.78rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600}
+.dupone{display:flex;align-items:center;gap:10px}.dupone .main{flex:1;min-width:0}.dupone .t{font-weight:600}
+.dupone .ic{width:36px;height:36px;border-radius:10px;display:grid;place-items:center;flex:none;color:#3a4052}
 .paidtoggle{border:0;background:var(--wa);color:var(--wa-ink);border-radius:999px;padding:4px 10px 4px 8px;font-size:.78rem;font-weight:700;display:inline-flex;align-items:center;gap:4px}
 .paidtoggle svg.i{stroke-width:2.6}
 .paidbtn{border:1.5px solid var(--line);background:transparent;color:var(--fg);border-radius:999px;padding:3px 10px;font-size:.78rem;font-weight:700}
@@ -955,6 +964,8 @@ function rExp(){
   const days=[...new Set(E.map(e=>e.date))];
   if(!open)open=new Set([days[0]]);
   const all=days.every(d=>open.has(d));
+  const dp=dupPairs().length;
+  if(dp)h+=`<button class="dupnote" id="dupReview"><span>${dp} possible duplicate${dp>1?'s':''}</span><b>Review</b></button>`;
   h+=`<div class="bar"><span class="tot">Trip total <b>${money(spend().reduce((s,e)=>s+e.amt,0))}</b></span>${days.length>1?`<button class="ghost" id="toggleAll">${ico(all?'i-collapse':'i-expand')}${all?'Collapse all':'Expand all'}</button>`:''}</div>`;
   const everyone=people().length;
   days.forEach(d=>{
@@ -1081,6 +1092,7 @@ document.addEventListener('click',e=>{
     toast('Marked as not paid',{label:'Undo',fn:()=>{p.del=false;p.u=now();save();render();toast('Marked as paid')}})}return}
   const st=e.target.closest('[data-settle]');if(st){const x=lastT[+st.dataset.settle];if(x){const m=me(),pick=u=>u.ids.includes(m)?m:u.ids[0];openPay(null,{from:pick(x[0]),to:pick(x[1]),amt:x[2]})}return}
   if(e.target.closest('#export'))return exportCsv();
+  if(e.target.closest('#dupReview'))return openDupReview();
   const lk=e.target.closest('[data-link]');if(lk){linking=linking===lk.dataset.link?null:lk.dataset.link;rPpl();return}
   const pw=e.target.closest('[data-pairwith]');
   if(pw&&linking){const a=person(linking),b=person(pw.dataset.pairwith);a.pair=b.id;b.pair=a.id;a.u=b.u=now();linking=null;save();render();toast(`${a.name} & ${b.name} paired`);return}
@@ -1153,6 +1165,7 @@ function openSheet(ex){
     <div class="lbl"><span>Split<em id="forName"></em></span><button type="button" id="allBtn"></button></div><div class="pick" id="forChips"></div>
     <div class="each" id="each"></div>
     <p class="msg" id="emsg"></p>
+    <div class="duppanel" id="duppanel" hidden aria-live="polite"></div>
     <div class="foot">${isNew?'':'<button type="button" class="btn danger" id="del">Delete</button>'}<button class="btn primary">${isNew?'Add':'Save'}</button></div>
     ${ex?.by?`<p class="by">Added by ${esc(pname(ex.by))}</p>`:''}
   </form>`;
@@ -1176,9 +1189,10 @@ function openSheet(ex){
   $('#fphoto').onchange=async e=>{const file=e.target.files[0];if(!file)return;
     try{f.newPhoto=await compress(file);draw()}catch(err){return toast('Couldn\'t read that photo')}
     scanReceipt(file,f,draw);};
-  $('#famt').oninput=()=>{f.touched.amt=true;draw()};$('#frate').oninput=draw;
-  $('#fdate').oninput=()=>{f.touched.date=true};
-  $('#fdesc').oninput=e=>{f.touched.desc=true;if(!f.catSet){f.cat=matchCat(e.target.value)||null;draw()}};
+  const unask=()=>{f.dupOk=false;const b=$('#duppanel');if(b)b.hidden=true};
+  $('#famt').oninput=()=>{f.touched.amt=true;unask();draw()};$('#frate').oninput=draw;
+  $('#fdate').oninput=()=>{f.touched.date=true;unask()};
+  $('#fdesc').oninput=e=>{f.touched.desc=true;unask();if(!f.catSet){f.cat=matchCat(e.target.value)||null;draw()}};
   $('#eform').onsubmit=e=>{e.preventDefault();
     const a=toPence($('#famt').value),d=$('#fdesc').value.trim()||'Expense',dt=$('#fdate').value||today();
     if(!(a>0))return $('#emsg').textContent='Enter an amount.';
@@ -1190,12 +1204,74 @@ function openSheet(ex){
       amt=Math.round(a*r);cur={cc:f.cc,oamt:a,rate:r};prefs.rates=prefs.rates||{};prefs.rates[f.cc]=r;savePrefs();
     }
     const id=isNew?uid():ex.id;
+    /* duplicate check: new expenses, or edits that change amount/date/description */
+    const cand={id,desc:d,amt,date:dt,cc:cur.cc,oamt:cur.oamt,notdup:ex?.notdup};
+    const changed=isNew||ex.amt!==amt||ex.date!==dt||ex.desc!==d;
+    const dups=changed&&!f.dupOk?findDups(cand):[];
+    if(dups.length){
+      const box=$('#duppanel');box.hidden=false;
+      box.innerHTML=`<b>Possible duplicate</b>${dups.slice(0,2).map(x=>`<span>${dupLine(x.e)} <i>(${esc(x.why.toLowerCase())})</i></span>`).join('')}
+        <span class="dupacts"><button type="button" class="btn" id="dupNo">${isNew?'Don\'t add':'Cancel'}</button><button type="button" class="btn primary" id="dupYes">${isNew?'Add anyway':'Save anyway'}</button></span>`;
+      $('#dupNo').onclick=()=>{close();if(isNew)toast('Not added')};
+      $('#dupYes').onclick=()=>{f.dupOk=dups.map(x=>x.e.id);$('#eform').requestSubmit?$('#eform').requestSubmit():$('#eform').dispatchEvent(new Event('submit',{cancelable:true}))};
+      box.scrollIntoView&&box.scrollIntoView({block:'nearest'});
+      return;
+    }
+    const notdup=Array.isArray(f.dupOk)?[...new Set([...(ex?.notdup||[]),...f.dupOk])]:(ex?.notdup||undefined);
     let photo=f.photo;
     if(f.newPhoto){photo=now();queuePhoto(id,photo,f.newPhoto)}
     const rec={desc:d,amt,date:dt,paidBy:f.paidBy,for:[...f.for],cat:f.cat||'other',photo:photo||0,pe:f.newPhoto?(S.pk?1:0):(ex?.pe||0),...cur,u:now()};
+    if(notdup&&notdup.length)rec.notdup=notdup;
     if(isNew)S.expenses.push({id,by:me()||null,...rec});else Object.assign(ex,rec);
     S.lastPayer=f.paidBy;open?.add(dt);
     save();close();tab='exp';render();toast(isNew?'Added':'Saved');
+  };
+}
+/* ---- Duplicates: same amount and shop within 2 days, same amount on the same day, or the same shop on the same day ----
+   "Not a duplicate" is remembered on the expense (notdup) and syncs, so nobody is asked twice. */
+const DUP_GENERIC=new Set(['dinner','lunch','breakfast','brunch','coffee','coffees','drinks','food','groceries','supermarket','expense','restaurant','cafe','taxi','ticket','tickets','shop','shopping','snacks','pizza','gelato','payment']);
+const normTxt=t=>String(t||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,' ').trim();
+function sameShop(a,b){
+  const x=normTxt(a),y=normTxt(b);if(x.length<3||y.length<3)return false;
+  const words=t=>t.split(' ').filter(w=>w.length>=4&&!DUP_GENERIC.has(w));
+  if(x===y)return words(x).length>0;
+  const wy=words(y);return words(x).some(w=>wy.includes(w));
+}
+const dayGap=(a,b)=>Math.abs(new Date(a+'T12:00')-new Date(b+'T12:00'))/864e5;
+const sameAmount=(a,b)=>a.amt===b.amt||(!!a.cc&&a.cc===b.cc&&a.oamt===b.oamt);
+/* why two expenses look like duplicates, or '' if they don't */
+function dupReason(a,b){
+  if(!a||!b||a.id===b.id||a.del||b.del||isPay(a)||isPay(b))return '';
+  if((a.notdup||[]).includes(b.id)||(b.notdup||[]).includes(a.id))return '';
+  const amt=sameAmount(a,b),shop=sameShop(a.desc,b.desc),gap=dayGap(a.date,b.date);
+  if(amt&&shop&&gap<=2)return 'Same amount and shop';
+  if(amt&&gap===0)return 'Same amount, same day';
+  if(shop&&gap===0)return 'Same shop, same day';
+  return '';
+}
+const findDups=c=>expenses().filter(e=>dupReason(c,e)).map(e=>({e,why:dupReason(c,e)}));
+function dupPairs(){
+  const E=expenses().filter(e=>!isPay(e)),out=[];
+  for(let i=0;i<E.length;i++)for(let j=i+1;j<E.length;j++){const why=dupReason(E[i],E[j]);if(why)out.push({a:E[i],b:E[j],why})}
+  return out;
+}
+const dupLine=e=>`<b>${esc(e.desc)}</b> ${money(e.amt)} · ${esc(fmtDate(e.date))} · ${e.paidBy===me()?'you paid':esc(first(pname(e.paidBy)))+' paid'}`;
+function openDupReview(){
+  const pairs=dupPairs(),sc=openScrim();
+  if(!pairs.length){close();return toast('No possible duplicates')}
+  sc.innerHTML=`<div class="sheet" role="dialog" aria-label="Possible duplicates">
+    <div class="sh"><button type="button" class="iconbtn" data-dismiss aria-label="Close">${ico('i-down')}</button><h3>Possible duplicates</h3></div>
+    ${pairs.map((p,i)=>`<div class="duppair"><div class="dupwhy">${esc(p.why)}</div>
+      ${[p.a,p.b].map(e=>`<div class="dupone"><span class="ic" style="background:${CAT_COL[e.cat]}">${ico('c-'+e.cat)}</span><span class="main"><div class="t">${esc(e.desc)}</div><div class="who">${money(e.amt)} · ${esc(fmtDate(e.date))} · ${e.paidBy===me()?'You':esc(first(pname(e.paidBy)))} paid${e.photo?' · receipt':''}</div></span><button class="pill" data-dupdel="${e.id}">Delete</button></div>`).join('')}
+      <button class="btn" data-notdup="${i}">Not duplicates</button></div>`).join('')}
+  </div>`;
+  sc.onclick=e=>{
+    if(e.target===sc)return close();
+    const nd=e.target.closest('[data-notdup]');
+    if(nd){const p=pairs[+nd.dataset.notdup],keep=p.a.u>=p.b.u?p.a:p.b,other=keep===p.a?p.b:p.a;
+      keep.notdup=[...(keep.notdup||[]),other.id];keep.u=now();save();render();dupPairs().length?openDupReview():close();return}
+    const dd=e.target.closest('[data-dupdel]');
+    if(dd){const x=S.expenses.find(y=>y.id===dd.dataset.dupdel);close();removeExp(x)}
   };
 }
 const lastRate=cc=>{const e=S.expenses.filter(x=>!x.del&&x.cc===cc&&x.rate).sort((a,b)=>b.u-a.u)[0];return e?e.rate:((prefs.rates||{})[cc]||'')};
@@ -1272,6 +1348,10 @@ function applyScan(r,f,draw,show){
   const differs=r.total&&f.touched.amt&&toPence($('#famt').value)!==Math.round(r.total*100);
   if(filled.length)show(`${ico('i-check','i tiny')}Filled from receipt: <b>${esc(filled.join(' · '))}</b>. Check before saving.`);
   else show(`Receipt total ${esc(amtTxt||'not found')}.`);
+  const amtNow=toPence($('#famt').value),rateNow=parseFloat(String($('#frate').value).replace(',','.'));
+  const cand={id:'_new',desc:$('#fdesc').value,date:$('#fdate').value,amt:f.cc!==S.cur&&rateNow>0?Math.round(amtNow*rateNow):amtNow,cc:f.cc!==S.cur?f.cc:null,oamt:f.cc!==S.cur?amtNow:null};
+  const d0=amtNow>0?findDups(cand)[0]:null;
+  if(d0)$('#scanmsg').insertAdjacentHTML('beforeend',`<span class="dupwarn">${ico('i-x','i tiny')}Looks like ${dupLine(d0.e)}. Check it isn't a duplicate.</span>`);
   if(differs){const m=$('#scanmsg');m.insertAdjacentHTML('beforeend',` <button type="button" class="ghost" id="useTotal">Use ${esc(amtTxt)}</button>`);
     $('#useTotal').onclick=()=>{if(cur!==f.cc){f.cc=cur;if(cur!==S.cur&&!$('#frate').value)$('#frate').value=lastRate(cur)}$('#famt').value=r.total.toFixed(2);draw();$('#useTotal').remove()}}
 }

@@ -145,3 +145,13 @@ test('turning "Read receipt photos" off attaches the photo without scanning', as
     assert.equal($(P, '#scanmsg').hidden, true);
   } finally { P.w.close(); }
 });
+
+test('scanning a receipt that is already in the trip warns straight away', async () => {
+  const { P } = await phone(`{"total":"33,00","currency":"EUR","date":"${daysAgo(2)}","merchant":"EUROSPIN","type":"supermarket"}`);
+  try {
+    P.run(`S.expenses.push({id:'old',desc:'Eurospin',amt:3300,date:'${daysAgo(2)}',paidBy:'s',for:['c','s'],cat:'groceries',u:1});save()`);
+    P.run(`document.querySelector('#add').click()`);
+    await photo(P); await tick(50);
+    assert.match($(P, '#scanmsg').textContent, /Looks like Eurospin €33\.00 .* Sam paid\. Check it isn't a duplicate/);
+  } finally { P.w.close(); }
+});

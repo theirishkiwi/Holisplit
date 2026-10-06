@@ -6,7 +6,7 @@ wrangler.jsonc     config: static assets + KV namespace "TRIPS"
 
 ## Tests
 npm install
-npm test      (72 tests: split maths, settling, couples, payments, currencies, amount entry, dates, worker sync, photos, link reset, encryption, delete and restore, closing screens, paid toggle, payment links, permanent delete, layout, receipt scanning)
+npm test      (77 tests: split maths, settling, couples, payments, currencies, amount entry, dates, worker sync, photos, link reset, encryption, delete and restore, closing screens, paid toggle, payment links, permanent delete, layout, receipt scanning, duplicate checks)
 
 ## Deploy (one time)
 1. npx wrangler login
@@ -49,3 +49,6 @@ and the reply is capped at 160 tokens (usually ~50), so a scan uses about 10-40 
 roughly 250-1,000 scans a day within the free allowance. Each trip is also capped at 100
 scans a day. The Worker returns the model's token usage with each scan, and Cloudflare's
 dashboard (AI > Workers AI) shows the exact neurons used.
+
+## Duplicate checks
+Before adding an expense the app checks for one that looks the same: same amount and shop within 2 days, same amount on the same day, or same shop on the same day. Words like "dinner" or "groceries" don't count as a shop. You can choose "Don't add" or "Add anyway". Editing an expense is checked the same way, but only when its amount, date or description changes. A scanned receipt is checked as soon as it's read. Duplicates already in the trip appear in a "possible duplicates · Review" notice on Expenses: delete one (with Undo) or mark the pair "Not duplicates". That choice syncs, so nobody is asked again.
