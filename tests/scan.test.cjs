@@ -50,7 +50,8 @@ test('worker /api/scan: accepts the licence once, returns total, date, type; cou
   assert.ok(ai.calls.some(c => c.input.prompt === 'agree'), 'licence accepted automatically');
   const call = ai.calls.at(-1);
   assert.equal(call.model, '@cf/meta/llama-3.2-11b-vision-instruct');
-  assert.ok(Array.isArray(call.input.image) && call.input.image[0] === 0xff, 'image sent as bytes');
+  assert.match(call.input.image, /^data:image\/jpeg;base64,/, 'image as a data URL, like Cloudflare\'s example');
+  assert.deepEqual(call.input.messages.map(m => m.role), ['system', 'user'], 'system + user message (3030 without)');
   assert.ok(call.input.max_tokens <= 300, 'short answer keeps cost down');
   assert.ok(![...env.TRIPS.m.keys()].some(k => k.startsWith('photo:')), 'photo not stored');
   env.TRIPS.m.set(`scan:${id}:${TODAY}`, '100');
@@ -167,10 +168,17 @@ test('worker /api/scan: copes with object replies, broken JSON, and image-format
   // Italian decimal comma makes invalid JSON
   [st, j] = await call(env({ run: async () => ({ response: '{"total": 65,90, "currency": "EUR", "merchant": "Vasari Cafe", "type": "cafe"}' }) }));
   assert.equal(st, 200); assert.equal(j.total, 65.9, 'not 6590');
-  // account wants the image as a string: retried as a data URL
+  // the format is refused (e.g. 3030): tries the next way of attaching the image
   const seen = [];
-  [st, j] = await call(env({ run: async (m, inp) => { seen.push(typeof inp.image); if (Array.isArray(inp.image)) throw new Error('Type mismatch of \'/image\''); return { response: '{"total":9}' }; } }));
-  assert.equal(st, 200); assert.deepEqual(seen, ['object', 'string']);
+  [st, j] = await call(env({ run: async (m, inp) => {
+    const kind = inp.image ? (Array.isArray(inp.image) ? 'bytes' : 'dataurl') : 'image_url';
+    seen.push(kind);
+    if (kind !== 'bytes') throw new Error('3030: Unable to add image when there are no user-supplied nor system-supplied messages.');
+    return { response: '{"total":9}' };
+  } }));
+  assert.equal(st, 200); assert.deepEqual(seen, ['dataurl', 'image_url', 'bytes']);
+  [st, j] = await call(env({ run: async () => { throw new Error('3030: nope'); } }));
+  assert.equal(st, 503); assert.match(j.detail, /3030: nope \| 3030: nope/, 'all attempts reported');
   // failures say why
   [st, j] = await call(env({ run: async () => ({ response: 'The image is too blurry to read.' }) }));
   assert.equal(st, 422); assert.match(j.detail, /too blurry/);

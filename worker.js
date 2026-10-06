@@ -75,19 +75,29 @@ export function parseScan(text, today) {
   };
   return out.total || out.date || out.merchant ? out : null;
 }
+// Ways of attaching the photo, in order: Cloudflare's own example first (system + user message, image as a data URL),
+// then the OpenAI-style image_url message, then the older prompt + byte array form.
+const SCAN_FORMATS = [
+  (url) => ({ messages: [{ role: 'system', content: 'You read receipts and reply with JSON only.' }, { role: 'user', content: SCAN_PROMPT }], image: url }),
+  (url) => ({ messages: [{ role: 'system', content: 'You read receipts and reply with JSON only.' }, { role: 'user', content: [{ type: 'text', text: SCAN_PROMPT }, { type: 'image_url', image_url: { url } }] }] }),
+  (url, bytes) => ({ prompt: SCAN_PROMPT, image: [...bytes] }),
+];
+const isLicence = e => /agree|licen[cs]e/i.test(String(e && e.message));
 async function runScanModel(env, bytes) {
-  // Workers AI documents the image as an array of bytes; fall back to a data URL if this account wants a string
-  const call = image => env.AI.run(SCAN_MODEL, { messages: [{ role: 'user', content: SCAN_PROMPT }], image, max_tokens: 256, temperature: 0 });
-  const tryBoth = async () => {
-    try { return await call([...bytes]); }
-    catch (e) { if (/agree|licen[cs]e/i.test(String(e && e.message))) throw e; return await call(dataUrl(bytes)); }
-  };
-  try { return await tryBoth(); }
-  catch (e) {
-    // Meta's licence must be accepted once per Cloudflare account; do it automatically and retry
-    if (/agree|licen[cs]e/i.test(String(e && e.message))) { await env.AI.run(SCAN_MODEL, { prompt: 'agree' }); return await tryBoth(); }
-    throw e;
+  const url = dataUrl(bytes), errors = [];
+  for (const make of SCAN_FORMATS) {
+    const input = { ...make(url, bytes), max_tokens: 256, temperature: 0 };
+    try { return await env.AI.run(SCAN_MODEL, input); }
+    catch (e) {
+      // Meta's licence must be accepted once per Cloudflare account; do it automatically and retry
+      if (isLicence(e)) {
+        await env.AI.run(SCAN_MODEL, { prompt: 'agree' });
+        try { return await env.AI.run(SCAN_MODEL, input); } catch (e2) { e = e2; }
+      }
+      errors.push(String(e && e.message || e));
+    }
   }
+  throw new Error(errors.join(' | '));
 }
 function dataUrl(b) {
   let bin = ''; for (let i = 0; i < b.length; i += 8192) bin += String.fromCharCode.apply(null, b.subarray(i, i + 8192));
@@ -116,7 +126,7 @@ async function handleScan(req, env, trip) {
   await env.TRIPS.put(ck, String(used + 1), { expirationTtl: 2 * 86400 });
   let r;
   try { r = await runScanModel(env, b); }
-  catch (e) { console.log('scan: AI error', String(e && e.message)); return json({ error: 'ai unavailable', detail: String(e && e.message || e).slice(0, 160) }, 503); }
+  catch (e) { console.log('scan: AI error', String(e && e.message)); return json({ error: 'ai unavailable', detail: String(e && e.message || e).slice(0, 400) }, 503); }
   const text = scanText(r), found = parseScan(text, today);
   if (!found) { console.log('scan: unreadable reply', text.slice(0, 300)); return json({ error: 'unreadable', detail: text.slice(0, 160) }, 422); }
   return json({ ok: true, ...found, usage: (r && r.usage) || null });
