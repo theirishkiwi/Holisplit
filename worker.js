@@ -26,9 +26,11 @@ const parse = s => { try { return JSON.parse(s); } catch { return null; } };
 const SCAN_MODEL = '@cf/meta/llama-3.2-11b-vision-instruct';
 const SCANS_PER_DAY = 100;
 const MAX_SCAN_BYTES = 1.5 * 1024 * 1024;
-const SCAN_PROMPT = `Read this receipt. Reply with only a JSON object, no other text:
-{"total": number, "currency": "EUR" | "GBP" | "USD" | "CHF" | null, "date": "YYYY-MM-DD" | null, "merchant": string | null, "type": "supermarket" | "cafe" | "bar" | "restaurant" | "transport" | "hotel" | "activity" | "other"}
-"total" is the final amount paid: the TOTALE / TOTAL / IMPORTO PAGATO / AMOUNT DUE line, not a subtotal, tax line or change.
+const SCAN_PROMPT = `Read this receipt or card payment slip. The photo may be sideways or upside down. Reply with only a JSON object, no other text:
+{"total": number, "currency": "EUR" | "GBP" | "USD" | "CHF" | null, "date": "YYYY-MM-DD" | null, "merchant": string | null, "what": string, "type": "supermarket" | "cafe" | "bar" | "restaurant" | "transport" | "hotel" | "activity" | "other"}
+"total" is the final amount paid: the TOTALE / TOTAL / IMPORTO / IMPORTO PAGATO / AMOUNT DUE line, not a subtotal, tax line or change.
+"merchant" is the shop, bar or restaurant name, usually the first lines or after ESERCENTE / MERCHANT. Never the bank, card or terminal company (Nexi, Intesa Sanpaolo, UniCredit, Mastercard, Visa, SumUp, POS).
+"what" is always filled: 1 to 3 words for what was bought, e.g. "Dinner", "Lunch", "Groceries", "Coffee", "Drinks", "Fuel", "Museum tickets", "Pharmacy". Guess from the items, the shop or the time if needed.
 Dates on European receipts are day/month/year. Use null for anything you cannot read.`;
 const SCAN_TYPES = { supermarket: 'groceries', grocery: 'groceries', groceries: 'groceries', cafe: 'drinks', 'café': 'drinks', coffee: 'drinks', bar: 'drinks', pub: 'drinks',
   restaurant: 'food', pizzeria: 'food', takeaway: 'food', bakery: 'food', transport: 'transport', taxi: 'transport', fuel: 'transport',
@@ -55,6 +57,9 @@ function scanDate(v, today) {
   if (dt - t > 864e5 || t - dt > 2 * 365 * 864e5) return null;                 // future, or implausibly old
   return iso;
 }
+const scanName = (v, n) => typeof v === 'string' && v.trim() && !/^(null|none|unknown|n\/a)$/i.test(v.trim()) ? v.trim().replace(/\s+/g, ' ').slice(0, n) : null;
+// payment companies printed on card slips are not the shop
+const NOT_SHOPS = /^(nexi|intesa( sanpaolo)?|unicredit|mastercard|visa|maestro|sumup|pos|bancomat|pagobancomat|american express|amex|worldline|satispay|banca\b.*)$/i;
 // Pull a validated result out of whatever the model said
 export function parseScan(text, today) {
   const t = String(text || ''), m = t.match(/\{[\s\S]*\}/);
@@ -63,16 +68,18 @@ export function parseScan(text, today) {
   if (!j) {
     // not valid JSON (e.g. "total": 65,90 or a reply cut short): pick the fields out one by one
     const f = k => { const x = t.match(new RegExp('"?' + k + '"?\\s*:\\s*("([^"]*)"|[\\d][\\d.,]*)', 'i')); return x ? (x[2] ?? x[1]) : null; };
-    j = { total: f('total'), currency: f('currency'), date: f('date'), merchant: f('merchant'), type: f('type') };
+    j = { total: f('total'), currency: f('currency'), date: f('date'), merchant: f('merchant'), what: f('what'), type: f('type') };
   }
   const total = scanNum(j.total);
   const out = {
     total: total > 0 && total < 100000 ? Math.round(total * 100) / 100 : null,
     cur: SCAN_CUR[String(j.currency || '').trim().toUpperCase()] || SCAN_CUR[String(j.currency || '').trim()] || null,
     date: scanDate(j.date, today),
-    merchant: typeof j.merchant === 'string' && j.merchant.trim() ? j.merchant.trim().replace(/\s+/g, ' ').slice(0, 40) : null,
+    merchant: scanName(j.merchant, 40),
+    what: scanName(j.what, 30),
     cat: SCAN_TYPES[String(j.type || '').toLowerCase().trim()] || 'other',
   };
+  if (out.merchant && NOT_SHOPS.test(out.merchant)) out.merchant = null;
   return out.total || out.date || out.merchant ? out : null;
 }
 // Ways of attaching the photo, in order: Cloudflare's own example first (system + user message, image as a data URL),
