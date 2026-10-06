@@ -258,6 +258,13 @@ a.paidbtn{text-decoration:none;display:inline-block}
 .srow.two .amt{font-size:1.1rem}
 .srow.two+.srow.two{border-top:1px solid var(--line);border-radius:0}
 .rowchev{color:var(--muted);width:18px;height:18px}
+.scanmsg{margin:0;background:var(--soft);color:var(--soft-ink);border-radius:12px;padding:9px 12px;font-size:.88rem;line-height:1.45;display:block}
+.scanmsg svg.i{vertical-align:-2px;margin-right:5px}
+.scanmsg b{font-weight:700}
+.scanmsg .ghost{padding:2px 4px;font-size:.85rem}
+.scanmsg.busy{animation:scanpulse 1.4s ease-in-out infinite}
+@keyframes scanpulse{50%{opacity:.65}}
+@media (prefers-reduced-motion:reduce){.scanmsg.busy{animation:none}}
 .paidtoggle{border:0;background:var(--wa);color:var(--wa-ink);border-radius:999px;padding:4px 10px 4px 8px;font-size:.78rem;font-weight:700;display:inline-flex;align-items:center;gap:4px}
 .paidtoggle svg.i{stroke-width:2.6}
 .paidbtn{border:1.5px solid var(--line);background:transparent;color:var(--fg);border-radius:999px;padding:3px 10px;font-size:.78rem;font-weight:700}
@@ -432,7 +439,7 @@ let seq=0;
 const save=()=>{S.u=now();S.dirty=true;seq++;persist();kick()};
 
 /* ---- Sync ---- */
-let syncAvail=false,syncing=false,again=false,kickT;
+let syncAvail=false,scanAvail=false,syncing=false,again=false,kickT;
 const api=id=>'/api/trip/'+id;
 const syncOn=()=>syncAvail&&prefs.sync&&!S.sample&&!S.revoked;
 /* ---- End-to-end encryption ----
@@ -464,7 +471,7 @@ function ahead(loc,rem){
   if(!rem)return true;if((loc.nu||0)>(rem.nu||0)||(loc.du||0)>(rem.du||0))return true;
   return ['people','expenses'].some(k=>loc[k].some(x=>{const r=(rem[k]||[]).find(y=>y.id===x.id);return !r||(x.u||0)>(r.u||0)}));
 }
-const ready=fetch('/api/ping',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(j=>{syncAvail=!!(j&&j.ok)}).catch(()=>{}).then(()=>{setNet(syncOn()?'sync':'off');sync()});
+const ready=fetch('/api/ping',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(j=>{syncAvail=!!(j&&j.ok);scanAvail=!!(j&&j.scan)}).catch(()=>{}).then(()=>{setNet(syncOn()?'sync':'off');sync()});
 function setNet(s){const c=$('#cloud');c.hidden=!syncOn();c.dataset.s=s;c.setAttribute('aria-label',{ok:'Synced',sync:'Syncing',offline:'Offline. Tap to retry'}[s]||'Sync')}
 function kick(){clearTimeout(kickT);kickT=setTimeout(sync,500)}
 async function sync(){
@@ -1101,7 +1108,7 @@ function openSheet(ex){
   const P=people(),isNew=!ex;
   const lastPayer=P.some(p=>p.id===S.lastPayer)?S.lastPayer:P[0].id;
   /* cat: null = not chosen yet (grey); guessed from the description until the user picks one */
-  const f={cat:ex?.cat||null,catSet:!!ex,menu:false,ccMenu:false,cc:ex?.cc||S.cur,
+  const f={touched:{amt:!!ex,date:!!ex,desc:!!ex},cat:ex?.cat||null,catSet:!!ex,menu:false,ccMenu:false,cc:ex?.cc||S.cur,
     paidBy:ex?.paidBy||(isNew&&me())||lastPayer,for:new Set(ex?.for||P.map(p=>p.id)),
     photo:ex?.photo||0,newPhoto:null};
   const sc=openScrim();
@@ -1134,9 +1141,10 @@ function openSheet(ex){
     if(has){const img=$('#thumbImg');if(f.newPhoto)img.src=f.newPhoto;else photoURL(ex.id,f.photo,ex.pe).then(u=>{img.src=u}).catch(()=>{img.alt='Receipt needs signal'})}
   };
   sc.innerHTML=`<form class="sheet" id="eform" role="dialog" aria-label="${isNew?'Add':'Edit'} expense">
-    <div class="sh"><button type="button" class="iconbtn" data-dismiss aria-label="Close">${ico('i-down')}</button><h3>${isNew?'New expense':'Edit expense'}</h3><button type="button" class="iconbtn" id="camBtn" aria-label="Add receipt photo">${ico('i-cam')}</button></div>
+    <div class="sh"><button type="button" class="iconbtn" data-dismiss aria-label="Close">${ico('i-down')}</button><h3>${isNew?'New expense':'Edit expense'}</h3><button type="button" class="iconbtn" id="camBtn" aria-label="Scan or attach a receipt">${ico('i-cam')}</button></div>
     <input id="fphoto" type="file" accept="image/*" hidden>
     <div class="thumbrow" id="photoArea" hidden></div>
+    <p class="scanmsg" id="scanmsg" hidden aria-live="polite"></p>
     <div class="amtrow"><button type="button" class="ccbtn" id="ccbtn" aria-label="Currency" aria-haspopup="true"></button><input id="famt" class="field big" inputmode="decimal" value="${ex?((ex.cc?ex.oamt:ex.amt)/100).toFixed(2):''}" autocomplete="off" aria-label="Amount"><div class="ccmenu" id="ccmenu" hidden></div></div>
     <div class="raterow" id="raterow" hidden><span id="rlab"></span><input id="frate" class="field" inputmode="decimal" value="${ex?.rate||lastRate(f.cc)}" autocomplete="off" aria-label="Exchange rate"><span class="conv" id="conv"></span></div>
     <div class="descrow"><input id="fdesc" class="field" type="text" placeholder="What for?" value="${esc(ex?.desc||'')}" autocomplete="off" aria-label="Description"><button type="button" class="catbtn" id="catbtn" aria-label="Choose icon" aria-haspopup="true"></button><div class="catmenu" id="catmenu" hidden></div></div>
@@ -1166,9 +1174,11 @@ function openSheet(ex){
     if(e.target.id==='del'){close();removeExp(ex)}
   };
   $('#fphoto').onchange=async e=>{const file=e.target.files[0];if(!file)return;
-    try{f.newPhoto=await compress(file);draw()}catch(err){toast('Couldn\'t read that photo')}};
-  $('#famt').oninput=draw;$('#frate').oninput=draw;
-  $('#fdesc').oninput=e=>{if(!f.catSet){f.cat=matchCat(e.target.value)||null;draw()}};
+    try{f.newPhoto=await compress(file);draw()}catch(err){return toast('Couldn\'t read that photo')}
+    scanReceipt(file,f,draw);};
+  $('#famt').oninput=()=>{f.touched.amt=true;draw()};$('#frate').oninput=draw;
+  $('#fdate').oninput=()=>{f.touched.date=true};
+  $('#fdesc').oninput=e=>{f.touched.desc=true;if(!f.catSet){f.cat=matchCat(e.target.value)||null;draw()}};
   $('#eform').onsubmit=e=>{e.preventDefault();
     const a=toPence($('#famt').value),d=$('#fdesc').value.trim()||'Expense',dt=$('#fdate').value||today();
     if(!(a>0))return $('#emsg').textContent='Enter an amount.';
@@ -1230,11 +1240,46 @@ function openPay(ex,pre){
 
 /* ---- Receipt photos: compressed on the phone, kept locally until uploaded to /api/photo/<trip>/<expense> ---- */
 const PH='hs-photo-';
-function compress(file){return new Promise((res,rej)=>{
+/* ---- Receipt scanning: the photo is read by the app's Cloudflare AI (nothing is stored there).
+   Fills total, date, shop name, category and currency, but never overwrites what you typed. ---- */
+const scanOn=()=>scanAvail&&prefs.scan!==false&&syncOn();
+const titleCase=t=>t===t.toUpperCase()?t.toLowerCase().replace(/(^|[\s'&.-])(\p{L})/gu,(m,a,b)=>a+b.toUpperCase()):t;
+async function scanReceipt(file,f,draw){
+  if(!scanOn())return;
+  const msg=$('#scanmsg'),show=(h,busy)=>{const m=$('#scanmsg');if(!m)return;m.hidden=false;m.classList.toggle('busy',!!busy);m.innerHTML=h};
+  if(!msg)return;
+  show(`${ico('i-cam','i tiny')}Reading receipt…`,true);
+  const fail=t=>show(t||'Couldn\'t read the receipt. Enter the details yourself.');
+  try{
+    if(S.dirty){await waitIdle();await sync()}                       /* the trip must exist on the server */
+    const small=await compress(file,1120,0.8);
+    const r=await fetch('/api/scan/'+S.id,{method:'POST',headers:{'content-type':'image/jpeg'},body:dataBlob(small)});
+    if(!$('#eform'))return;                                          /* sheet closed meanwhile */
+    if(!r.ok){const why=((await r.json().catch(()=>({})))||{}).error;return fail(why==='daily scan limit reached'?'Daily scan limit reached for this trip. Enter the details yourself.':null)}
+    applyScan(await r.json(),f,draw,show);
+  }catch(e){if($('#eform'))fail(navigator.onLine===false?'Scanning needs signal. Enter the details yourself.':null)}
+}
+function applyScan(r,f,draw,show){
+  const filled=[],cur=r.cur||S.cur,amtTxt=r.total?fmtCc(Math.round(r.total*100),cur):'';
+  if(r.total&&!f.touched.amt){
+    if(cur!==f.cc){f.cc=cur;if(cur!==S.cur&&!$('#frate').value)$('#frate').value=lastRate(cur)}
+    $('#famt').value=r.total.toFixed(2);filled.push(amtTxt);
+  }
+  if(r.date&&!f.touched.date){$('#fdate').value=r.date;filled.push(fmtDate(r.date))}
+  if(r.merchant&&!f.touched.desc&&!$('#fdesc').value.trim()){$('#fdesc').value=titleCase(r.merchant);filled.push(titleCase(r.merchant))}
+  if(!f.catSet){const c=r.cat&&r.cat!=='other'?r.cat:matchCat($('#fdesc').value);if(c){f.cat=c;filled.push(CAT_NAME[c])}}
+  draw();
+  const differs=r.total&&f.touched.amt&&toPence($('#famt').value)!==Math.round(r.total*100);
+  if(filled.length)show(`${ico('i-check','i tiny')}Filled from receipt: <b>${esc(filled.join(' · '))}</b>. Check before saving.`);
+  else show(`Receipt total ${esc(amtTxt||'not found')}.`);
+  if(differs){const m=$('#scanmsg');m.insertAdjacentHTML('beforeend',` <button type="button" class="ghost" id="useTotal">Use ${esc(amtTxt)}</button>`);
+    $('#useTotal').onclick=()=>{if(cur!==f.cc){f.cc=cur;if(cur!==S.cur&&!$('#frate').value)$('#frate').value=lastRate(cur)}$('#famt').value=r.total.toFixed(2);draw();$('#useTotal').remove()}}
+}
+function compress(file,max=1400,q=0.7){return new Promise((res,rej)=>{
   const img=new Image(),url=URL.createObjectURL(file);
-  img.onload=()=>{const k=Math.min(1,1400/Math.max(img.width,img.height)),c=document.createElement('canvas');
+  img.onload=()=>{const k=Math.min(1,max/Math.max(img.width,img.height)),c=document.createElement('canvas');
     c.width=Math.round(img.width*k);c.height=Math.round(img.height*k);c.getContext('2d').drawImage(img,0,0,c.width,c.height);
-    URL.revokeObjectURL(url);res(c.toDataURL('image/jpeg',0.7))};
+    URL.revokeObjectURL(url);res(c.toDataURL('image/jpeg',q))};
   img.onerror=()=>{URL.revokeObjectURL(url);rej()};img.src=url;
 })}
 function queuePhoto(id,v,data){
@@ -1299,6 +1344,7 @@ function openSettings(){
       <div><label for="scur">Trip currency</label><input id="scur" class="field cur" type="text" maxlength="3" value="${esc(S.cur)}"></div>
       ${syncOn()?(S.key?`<div><label>Invite link<small>End-to-end encrypted. Resetting turns off the current link.</small></label><button class="btn danger" id="sreset">Reset link</button></div>`
         :`<div><label>Encryption<small>Encrypt this trip so only people with the link can read it. Everyone will need the new link.</small></label><button class="btn primary" id="sreset">Encrypt</button></div>`):''}
+      ${scanAvail?`<div><label for="sscan">Read receipt photos<small>Fills in total, date and type from a receipt photo. Read by the app's Cloudflare AI, not stored.</small></label><input id="sscan" class="sw" type="checkbox" role="switch" ${prefs.scan!==false?'checked':''}></div>`:''}
       <div><label for="ssync">Sync with group<small class="status">${status}</small></label><input id="ssync" class="sw" type="checkbox" role="switch" ${prefs.sync?'checked':''} ${syncAvail?'':'disabled'}></div>
     </div>
     ${people().length?`<div class="set"><div><label>Payment details<small>How the group pays you: Monzo, Revolut, Starling or bank</small></label><button class="btn primary" data-paydetails="${me()||people()[0].id}">Edit</button></div></div>`:''}
@@ -1322,6 +1368,7 @@ function openSettings(){
     if(e.target.closest('#simpgo')){const t=$('#simp').value;if(importData(t))close()}
   };
   $('#scur').onchange=e=>{S.cur=e.target.value.trim()||'£';S.nu=now();save();render()};
+  if($('#sscan'))$('#sscan').onchange=e=>{prefs.scan=e.target.checked;savePrefs()};
   $('#ssync').onchange=e=>{prefs.sync=e.target.checked;savePrefs();setNet(syncOn()?'sync':'off');render();sync()};
 }
 /* Import: {"people":[names],"expenses":[[id,date,desc,amount,payerName,cat?,[forNames]?]]}.

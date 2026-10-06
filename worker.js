@@ -20,6 +20,89 @@ const json = (o, status = 200) => new Response(JSON.stringify(o), { status, head
 const isEnc = t => !!t && t.v === 2 && typeof t.enc === 'string';
 const parse = s => { try { return JSON.parse(s); } catch { return null; } };
 
+// ---- Receipt scanning (Workers AI) ----
+// The phone sends a photo; the model reads total, date, currency, shop and type of place.
+// Nothing is stored. Only trips that exist on this server can scan, at most SCANS_PER_DAY per trip.
+const SCAN_MODEL = '@cf/meta/llama-3.2-11b-vision-instruct';
+const SCANS_PER_DAY = 100;
+const MAX_SCAN_BYTES = 1.5 * 1024 * 1024;
+const SCAN_PROMPT = `Read this receipt. Reply with only a JSON object, no other text:
+{"total": number, "currency": "EUR" | "GBP" | "USD" | "CHF" | null, "date": "YYYY-MM-DD" | null, "merchant": string | null, "type": "supermarket" | "cafe" | "bar" | "restaurant" | "transport" | "hotel" | "activity" | "other"}
+"total" is the final amount paid: the TOTALE / TOTAL / IMPORTO PAGATO / AMOUNT DUE line, not a subtotal, tax line or change.
+Dates on European receipts are day/month/year. Use null for anything you cannot read.`;
+const SCAN_TYPES = { supermarket: 'groceries', grocery: 'groceries', groceries: 'groceries', cafe: 'drinks', 'café': 'drinks', coffee: 'drinks', bar: 'drinks', pub: 'drinks',
+  restaurant: 'food', pizzeria: 'food', takeaway: 'food', bakery: 'food', transport: 'transport', taxi: 'transport', fuel: 'transport',
+  hotel: 'stay', accommodation: 'stay', activity: 'activity', museum: 'activity', other: 'other' };
+const SCAN_CUR = { EUR: '€', GBP: '£', USD: '$', CHF: 'CHF', '€': '€', '£': '£', '$': '$' };
+
+const scanNum = v => {
+  if (typeof v === 'number') return v;
+  if (typeof v !== 'string') return NaN;
+  let t = v.replace(/[^\d.,]/g, '');
+  const i = Math.max(t.lastIndexOf('.'), t.lastIndexOf(','));
+  t = i >= 0 && t.length - i - 1 <= 2 ? t.slice(0, i).replace(/[.,]/g, '') + '.' + t.slice(i + 1) : t.replace(/[.,]/g, '');
+  return parseFloat(t);
+};
+function scanDate(v, today) {
+  if (typeof v !== 'string') return null;
+  let m = v.match(/^(\d{4})-(\d{2})-(\d{2})/), y, mo, d;
+  if (m) [, y, mo, d] = m.map(Number);
+  else if ((m = v.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{2,4})$/))) { d = +m[1]; mo = +m[2]; y = +m[3] < 100 ? 2000 + +m[3] : +m[3]; }
+  else return null;
+  const dt = new Date(Date.UTC(y, mo - 1, d));
+  if (dt.getUTCMonth() !== mo - 1 || dt.getUTCDate() !== d) return null;          // not a real date
+  const iso = dt.toISOString().slice(0, 10), t = new Date(today + 'T00:00:00Z');
+  if (dt - t > 864e5 || t - dt > 2 * 365 * 864e5) return null;                 // future, or implausibly old
+  return iso;
+}
+// Pull a validated result out of whatever the model said
+export function parseScan(text, today) {
+  const m = String(text || '').match(/\{[\s\S]*\}/);
+  if (!m) return null;
+  let j; try { j = JSON.parse(m[0]); } catch { return null; }
+  const total = scanNum(j.total);
+  const out = {
+    total: total > 0 && total < 100000 ? Math.round(total * 100) / 100 : null,
+    cur: SCAN_CUR[String(j.currency || '').trim().toUpperCase()] || SCAN_CUR[String(j.currency || '').trim()] || null,
+    date: scanDate(j.date, today),
+    merchant: typeof j.merchant === 'string' && j.merchant.trim() ? j.merchant.trim().replace(/\s+/g, ' ').slice(0, 40) : null,
+    cat: SCAN_TYPES[String(j.type || '').toLowerCase().trim()] || 'other',
+  };
+  return out.total || out.date || out.merchant ? out : null;
+}
+async function runScanModel(env, image) {
+  const input = { messages: [{ role: 'user', content: SCAN_PROMPT }], image, max_tokens: 160, temperature: 0 };
+  try { return await env.AI.run(SCAN_MODEL, input); }
+  catch (e) {
+    // Meta's licence must be accepted once per Cloudflare account; do it automatically and retry
+    if (/agree|licen[cs]e/i.test(String(e && e.message))) { await env.AI.run(SCAN_MODEL, { prompt: 'agree' }); return await env.AI.run(SCAN_MODEL, input); }
+    throw e;
+  }
+}
+async function handleScan(req, env, trip) {
+  if (req.method !== 'POST') return json({ error: 'method not allowed' }, 405);
+  if (!env.AI) return json({ error: 'scanning not set up' }, 503);
+  if (!TRIP_ID.test(trip)) return json({ error: 'bad id' }, 400);
+  const rec = await env.TRIPS.get('trip:' + trip);
+  if (goneFor(rec)) return goneFor(rec);
+  if (!rec) return json({ error: 'trip not found' }, 404);
+  const today = new Date().toISOString().slice(0, 10), ck = `scan:${trip}:${today}`;
+  const used = parseInt(await env.TRIPS.get(ck) || '0', 10);
+  if (used >= SCANS_PER_DAY) return json({ error: 'daily scan limit reached' }, 429);
+  const buf = await req.arrayBuffer();
+  if (!buf.byteLength || buf.byteLength > MAX_SCAN_BYTES) return json({ error: 'bad image size' }, 413);
+  const b = new Uint8Array(buf);
+  if (!(b[0] === 0xff && b[1] === 0xd8)) return json({ error: 'not a jpeg' }, 400);
+  let bin = ''; for (let i = 0; i < b.length; i += 8192) bin += String.fromCharCode.apply(null, b.subarray(i, i + 8192));
+  await env.TRIPS.put(ck, String(used + 1), { expirationTtl: 2 * 86400 });
+  let r;
+  try { r = await runScanModel(env, 'data:image/jpeg;base64,' + btoa(bin)); }
+  catch (e) { return json({ error: 'ai unavailable' }, 503); }
+  const found = parseScan(r && (r.response ?? r.result ?? r), today);
+  if (!found) return json({ error: 'unreadable' }, 422);
+  return json({ ok: true, ...found, usage: (r && r.usage) || null });
+}
+
 // Keep only the fields the app uses
 function clean(t) {
   const { v, id, name, cur, nu, people, expenses, u, prev, del, delBy, du } = t;
@@ -51,7 +134,9 @@ function merge(base, inc) {
 export default {
   async fetch(req, env) {
     const url = new URL(req.url);
-    if (url.pathname === '/api/ping') return json({ ok: true });
+    if (url.pathname === '/api/ping') return json({ ok: true, scan: !!env.AI });
+    const sm = url.pathname.match(/^\/api\/scan\/([^/]+)$/);
+    if (sm) return handleScan(req, env, sm[1]);
 
     // Receipt photos: one JPEG per expense, stored next to the trip
     const pm = url.pathname.match(/^\/api\/photo\/([^/]+)\/([^/]+)$/);

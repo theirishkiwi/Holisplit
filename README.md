@@ -6,7 +6,7 @@ wrangler.jsonc     config: static assets + KV namespace "TRIPS"
 
 ## Tests
 npm install
-npm test      (65 tests: split maths, settling, couples, payments, currencies, amount entry, dates, worker sync, photos, link reset, encryption, delete and restore, closing screens, paid toggle, payment links, permanent delete, layout)
+npm test      (72 tests: split maths, settling, couples, payments, currencies, amount entry, dates, worker sync, photos, link reset, encryption, delete and restore, closing screens, paid toggle, payment links, permanent delete, layout, receipt scanning)
 
 ## Deploy (one time)
 1. npx wrangler login
@@ -35,3 +35,17 @@ Each person can add Monzo, Revolut or Starling Settle Up names and UK bank detai
 Settle up shows Pay to whoever owes (opens their payment link; Monzo gets the amount on a £ trip)
 and Remind to whoever is owed (WhatsApp message with how to pay). Coming back from a payment app
 asks "Did you pay?" so the payment gets recorded. No bank linking, no fees from the app.
+
+## Receipt scanning
+Adding a photo to an expense sends it to the Worker's /api/scan, which asks Workers AI
+(Llama 3.2 11B Vision) for the total, currency, date, shop name and type of place, and fills
+the form without overwriting anything already typed. The photo is not stored by the scan.
+Settings -> "Read receipt photos" turns it off. Needs the "ai" binding in wrangler.jsonc.
+
+Cost: Workers AI includes 10,000 neurons a day free (resets 00:00 UTC). Llama 3.2 Vision costs
+4,410 neurons per million input tokens and 61,493 per million output tokens. A scan sends an
+image of at most 1120 px (up to 4 image tiles, roughly 1,600-6,400 tokens) plus a short prompt,
+and the reply is capped at 160 tokens (usually ~50), so a scan uses about 10-40 neurons:
+roughly 250-1,000 scans a day within the free allowance. Each trip is also capped at 100
+scans a day. The Worker returns the model's token usage with each scan, and Cloudflare's
+dashboard (AI > Workers AI) shows the exact neurons used.
