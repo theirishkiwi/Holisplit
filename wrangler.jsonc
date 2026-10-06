@@ -7,6 +7,10 @@
     "directory": "./public",
     "binding": "ASSETS"
   },
+  // Workers AI for receipt scanning (free daily allowance: 10,000 neurons)
+  "ai": {
+    "binding": "AI"
+  },
   "kv_namespaces": [
     {
       "binding": "TRIPS",
