@@ -181,7 +181,15 @@ h2{font:600 .78rem var(--body);text-transform:uppercase;letter-spacing:.08em;col
 svg.i.tiny{width:14px;height:14px;vertical-align:-2px}
 .invite{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
 /* me card */
-.mecard{display:block;width:100%;text-align:left;border:0;background:var(--card);border-radius:16px;padding:14px 16px;margin-top:14px;color:var(--fg)}
+.mecard{display:block;width:100%;text-align:left;border:0;background:var(--card);border-radius:16px;padding:12px 16px;margin-top:14px;color:var(--fg)}
+.mehead2{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;border:0;background:none;padding:2px 0;text-align:left;font:500 1.1rem/1.3 var(--body);color:var(--fg)}
+.mehead2 b{font-weight:700}
+.mechev{color:var(--muted);transform:rotate(90deg);transition:transform .15s}
+.mehead2[aria-expanded="true"] .mechev{transform:rotate(-90deg)}
+.melist{margin:10px 0 2px 2px;padding-left:12px;border-left:3px solid var(--line);display:flex;flex-direction:column;gap:6px}
+.melist button{border:0;background:none;padding:0;text-align:left;font:400 .92rem/1.35 var(--body);color:var(--muted)}
+.melist b{font-weight:600}
+.melist .memore{color:var(--muted)}
 .mehead{font:600 .95rem var(--body);color:var(--muted);margin-bottom:4px}
 .mebig{font:700 1.35rem/1.25 var(--display)}
 .melines{margin-top:6px;display:flex;flex-direction:column;gap:2px;color:var(--muted);font-size:.9rem}
@@ -214,6 +222,36 @@ a.paidbtn{text-decoration:none;display:inline-block}
 .warnbox{display:flex;flex-direction:column;gap:6px;background:var(--note);color:var(--note-ink);border-radius:14px;padding:12px 14px;font-size:.92rem}
 .btn.danger.solid{background:var(--neg);color:#fff}
 .btn:disabled{opacity:.4;cursor:not-allowed}
+.tripsub{margin:-8px 2px 10px;color:var(--muted);font-size:.85rem;font-weight:500}
+.tripsub:empty{display:none}
+.bar .tot{color:var(--muted);font-size:.9rem}.bar .tot b{color:var(--fg);font:700 1.05rem var(--body);margin-left:4px}
+.bar{padding:14px 2px 8px}
+.who .sep{opacity:.6}
+.srow{flex-wrap:nowrap}
+.srow .flow{flex:1;min-width:0;gap:6px;flex-wrap:nowrap;font-weight:600}
+.srow .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.srow .flow svg.i{width:16px;height:16px;flex:none}
+.srow .acts{flex:none;display:flex;gap:6px}
+.pill{border:1.5px solid var(--line);background:transparent;color:var(--fg);border-radius:999px;height:30px;padding:0 10px;font-size:.78rem;font-weight:700;display:inline-flex;align-items:center;gap:4px;text-decoration:none}
+.pill.ico{padding:0;width:30px;justify-content:center}
+.pill.pay{border-color:var(--accent);background:var(--accent);color:#fff;padding:0 14px}
+.h2row{display:flex;align-items:center;justify-content:space-between;margin:14px 0 6px}
+.h2row h2{margin:0 4px}
+.h2acts{display:flex;gap:6px}
+.iconbtn.sm{width:34px;height:34px;border-radius:10px}
+.iconbtn.wa{background:var(--wa);color:var(--wa-ink)}
+.fold{display:flex;align-items:center;justify-content:space-between;width:100%;border:0;border-top:1px solid var(--line);background:none;padding:12px 8px 8px;color:var(--muted);font-weight:600;font-size:.88rem}
+.foldh{display:flex;align-items:center;gap:6px;border:0;background:none;padding:0;color:var(--muted)}
+.foldh h2{margin:22px 0 8px 4px}
+.fchev{width:16px;height:16px;transform:rotate(90deg);transition:transform .15s;margin-top:14px}
+.fold .fchev{margin-top:0}
+[aria-expanded="true"]>.fchev{transform:rotate(-90deg)}
+.square.sm{padding:12px;font-size:.88rem}
+.tag{background:var(--soft);color:var(--soft-ink);border-radius:6px;padding:0 6px;font-weight:700}
+.okpay{color:var(--pos);display:inline-flex;align-items:center;gap:2px}
+.pa[data-pairto]{opacity:1;filter:none}
+.srow .flow{gap:5px}
+.rowchev{color:var(--muted);width:18px;height:18px}
 .paidtoggle{border:0;background:var(--wa);color:var(--wa-ink);border-radius:999px;padding:4px 10px 4px 8px;font-size:.78rem;font-weight:700;display:inline-flex;align-items:center;gap:4px}
 .paidtoggle svg.i{stroke-width:2.6}
 .paidbtn{border:1.5px solid var(--line);background:transparent;color:var(--fg);border-radius:999px;padding:3px 10px;font-size:.78rem;font-weight:700}
@@ -258,6 +296,7 @@ a.paidbtn{text-decoration:none;display:inline-block}
     <button class="iconbtn" id="cloud" aria-label="Sync now" hidden><svg class="i"><use href="#i-cloud"/></svg></button>
     <button class="iconbtn" id="gear" aria-label="Settings"><svg class="i"><use href="#i-gear"/></svg></button>
   </header>
+  <p class="tripsub" id="tripsub"></p>
   <div class="banner" id="deleted" hidden><span id="delText"></span><button id="restoreBtn">Restore</button></div>
   <div class="banner" id="revoked" hidden><span>This trip's link was reset. Open the new link from the group to keep syncing. Your changes will carry over.</span></div>
   <div class="banner" id="sample" hidden><span>Example trip</span><button id="clearSample">Start fresh</button></div>
@@ -531,9 +570,10 @@ const payee=u=>u.ids.map(person).find(hasPay)||person(u.ids[0]);
 const payerOf=u=>{const m=me();return u.ids.includes(m)?m:u.ids[0]};
 function rowActs(f,to,amt,i){
   const m=me(),pays=m&&f.ids.includes(m),owed=m&&to.ids.includes(m);
-  if(pays)return `<button class="paybtn" data-pay-i="${i}">Pay</button>`;
-  if(owed)return `<a class="paidbtn" data-remind href="https://wa.me/?text=${encodeURIComponent(remindText(f,to,amt))}" target="_blank" rel="noopener">Remind</a><button class="paidbtn" data-settle="${i}">Mark paid</button>`;
-  return (!m&&hasPay(payee(to))?`<button class="paybtn" data-pay-i="${i}">Pay</button>`:'')+`<button class="paidbtn" data-settle="${i}">Mark paid</button>`;
+  const done=`<button class="pill" data-settle="${i}" aria-label="Mark paid">${ico('i-check','i tiny')}Paid</button>`;
+  if(pays)return `<button class="pill pay" data-pay-i="${i}">Pay</button>`;
+  if(owed)return `<a class="pill ico" data-remind href="https://wa.me/?text=${encodeURIComponent(remindText(f,to,amt))}" target="_blank" rel="noopener" aria-label="Remind on WhatsApp">${ico('i-chat','i tiny')}</a>${done}`;
+  return (!m&&hasPay(payee(to))?`<button class="pill pay" data-pay-i="${i}">Pay</button>`:'')+done;
 }
 function payLines(p,amt,payer){
   const d=(p&&p.pay)||{},out=[];
@@ -599,6 +639,33 @@ function openPayTo(f,to,amt){
     const c=e.target.closest('[data-copy]');
     if(c){copy(c.dataset.copy,'Copied');if(bank)setPending({trip:S.id,from:payer,to:p.id,amt,at:now()})}
     if(e.target.closest('#iPaid')){setPending(null);close();addPayment(payer,p.id,amt)}
+  };
+}
+/* person menu: this is me, payment details, couple, remove */
+function openPerson(id){
+  const p=person(id),q=partner(id),m=me(),sc=openScrim();
+  const singles=people().filter(x=>x.id!==id&&!partner(x.id));
+  const inUse=expenses().filter(x=>x.paidBy===id||x.for.includes(id)).length;
+  sc.innerHTML=`<div class="sheet" role="dialog" aria-label="${esc(p.name)}">
+    <div class="sh"><button type="button" class="iconbtn" data-dismiss aria-label="Close">${ico('i-down')}</button><h3>${esc(p.name)}</h3>${av(id,'lg')}</div>
+    <div class="set">
+      ${id===m?'<div><label>This is you<small>Shown as “You” on this phone</small></label></div>':`<div><label>This is me<small>See what you owe and are owed</small></label><button class="btn primary" data-me="${id}">Set</button></div>`}
+      <div><label>Payment details<small>${hasPay(p)?'Added':'How the group can pay '+esc(first(p.name))}</small></label><button class="btn" data-paydetails="${id}">${hasPay(p)?'Edit':'Add'}</button></div>
+      ${q?`<div><label>Couple with ${esc(pname(q))}<small>Settle up as one</small></label><button class="btn" id="punpair">Unpair</button></div>`
+        :singles.length?`<div class="col"><label>Pair as a couple<small>Tap their partner. Couples settle up as one.</small></label>${`<div class="pick">${singles.map(x=>`<button type="button" class="pa" data-pairto="${x.id}" aria-label="${esc(x.name)}">${av(x.id,'lg')}<span class="pn">${esc(first(x.name))}</span></button>`).join('')}</div>`}</div>`:''}
+    </div>
+    <button class="btn danger" id="prm">${inUse?`In ${inUse} expense${inUse>1?'s':''}, so it can't be removed`:'Remove from trip'}</button>
+  </div>`;
+  if(inUse)$('#prm').disabled=true;
+  sc.onclick=e=>{
+    if(e.target===sc)return close();
+    const sm=e.target.closest('[data-me]');if(sm){setMe(sm.dataset.me);close();render();toast(`You're ${first(p.name)} on this phone`);return}
+    const pt=e.target.closest('[data-pairto]');
+    if(pt){const b=person(pt.dataset.pairto);p.pair=b.id;b.pair=p.id;p.u=b.u=now();save();close();render();toast(`${p.name} & ${b.name} paired`);return}
+    if(e.target.closest('#punpair')){const b=person(q);delete p.pair;delete b.pair;p.u=b.u=now();save();close();render();return}
+    const rm=e.target.closest('#prm');
+    if(rm&&!inUse){if(!rm.dataset.armed){rm.dataset.armed=1;rm.textContent=`Tap again to remove ${first(p.name)}`;return}
+      p.del=true;p.u=now();save();close();render();toast(`Removed ${p.name}`,{label:'Undo',fn:()=>{p.del=false;p.u=now();save();render()}})}
   };
 }
 function openPayDetails(id){
@@ -824,10 +891,11 @@ const fmtDate=d=>{const t=today(),yd=new Date();yd.setDate(yd.getDate()-1);const
 let tab='exp',open=null,linking=null;
 function render(){
   if(document.activeElement!==$('#trip'))$('#trip').value=S.name;
+  $('#tripsub').textContent=tripSub();
   $('#sample').hidden=!S.sample;$('#revoked').hidden=!S.revoked;
   document.querySelectorAll('.tabs button').forEach(b=>b.setAttribute('aria-selected',b.dataset.tab===tab));
   ['exp','bal','ppl'].forEach(id=>$('#'+id).hidden=id!==tab);
-  $('#add').hidden=tab==='ppl'||!!S.del;
+  $('#add').hidden=tab!=='exp'||!!S.del;
   $('#deleted').hidden=!S.del;if(S.del)$('#delText').textContent=`${S.delBy?pname(S.delBy)+' deleted':'Deleted'} this trip. It's removed in ${daysLeft(S)} day${daysLeft(S)===1?'':'s'}.`;
   ({exp:rExp,bal:rBal,ppl:rPpl})[tab]();
 }
@@ -856,10 +924,15 @@ function meCard(){
   const who=other?`You & ${esc(pname(other))}`:'You',are=other?`${who} are`:"You're",obj=other?`you & ${esc(pname(other))}`:'you';
   const out=t.filter(x=>mine(x[0])),inn=t.filter(x=>mine(x[1]));
   const owe=out.reduce((s,x)=>s+x[2],0),owed=inn.reduce((s,x)=>s+x[2],0);
-  const big=owe?`<span class="neg">${who} owe ${money(owe)}</span>`:owed?`<span class="pos">${are} owed ${money(owed)}</span>`:`${are} all square`;
-  const lines=[...out.map(x=>`${who} owe ${esc(uName(x[1]))} <b>${money(x[2])}</b>`),...inn.map(x=>`${esc(uName(x[0]))} owe${x[0].ids.length>1?'':'s'} ${obj} <b>${money(x[2])}</b>`)];
-  const shown=lines.slice(0,3),more=lines.length-shown.length;
-  return `<button class="mecard" data-goto="bal"><div class="mebig">${big}</div>${shown.length?`<div class="melines">${shown.map(l=>`<span>${l}</span>`).join('')}${more?`<span>and ${more} more</span>`:''}</div>`:''}</button>`;
+  /* one summary line (tap to expand/collapse), then each balance in smaller grey text with the amount in colour */
+  const head=owe?`${who} owe <b class="neg">${money(owe)}</b>`:owed?`${are} owed <b class="pos">${money(owed)}</b>`:`${are} all square`;
+  const lines=[...out.map(x=>`${who} owe ${esc(uName(x[1]))} <b class="neg">${money(x[2])}</b>`),
+               ...inn.map(x=>`${esc(uName(x[0]))} owe${x[0].ids.length>1?'':'s'} ${obj} <b class="pos">${money(x[2])}</b>`)];
+  const shown=lines.slice(0,3),more=lines.length-shown.length,openMe=prefs.meOpen!==false&&lines.length>0;
+  return `<div class="mecard">
+    <button class="mehead2" ${lines.length?`data-metoggle aria-expanded="${openMe}"`:'data-goto="bal"'}><span>${head}</span>${lines.length?ico('i-chev','i mechev'):''}</button>
+    ${openMe?`<div class="melist">${shown.map(l=>`<button data-goto="bal">${l}</button>`).join('')}${more?`<button data-goto="bal" class="memore">Plus ${more} more balance${more>1?'s':''}</button>`:''}</div>`:''}
+  </div>`;
 }
 function rExp(){
   const E=expenses();
@@ -869,25 +942,42 @@ function rExp(){
   const days=[...new Set(E.map(e=>e.date))];
   if(!open)open=new Set([days[0]]);
   const all=days.every(d=>open.has(d));
-  h+=`<div class="bar"><b>${money(spend().reduce((s,e)=>s+e.amt,0))}</b>${days.length>1?`<button class="ghost" id="toggleAll">${ico(all?'i-collapse':'i-expand')}${all?'Collapse all':'Expand all'}</button>`:''}</div>`;
+  h+=`<div class="bar"><span class="tot">Trip total <b>${money(spend().reduce((s,e)=>s+e.amt,0))}</b></span>${days.length>1?`<button class="ghost" id="toggleAll">${ico(all?'i-collapse':'i-expand')}${all?'Collapse all':'Expand all'}</button>`:''}</div>`;
   const everyone=people().length;
   days.forEach(d=>{
     const de=E.filter(e=>e.date===d),isOpen=open.has(d);
     h+=`<div class="day${isOpen?' open':''}"><button class="dayh" data-day="${d}" aria-expanded="${isOpen}"><span class="d">${fmtDate(d)}</span><span class="s">${money(de.filter(e=>!isPay(e)).reduce((s,e)=>s+e.amt,0))}</span>${ico('i-chev')}</button>`;
     if(isOpen)h+='<ul class="items">'+de.map(e=>isPay(e)
       ?`<li><button class="row" data-pay="${e.id}"><span class="ic" style="background:${PAY_COL}">${ico('i-pay')}</span><span class="main"><div class="t">${esc(pname(e.paidBy))} paid ${esc(pname(e.for[0]))}</div><div class="who">${av(e.paidBy,'sm')}${ico('i-arrow')}${av(e.for[0],'sm')}<span>Payment</span></div></span><span class="rt"><span class="amt">${money(e.amt)}</span>${myLine(e)}</span></button></li>`
-      :`<li><button class="row" data-edit="${e.id}"><span class="ic" style="background:${CAT_COL[e.cat]}">${ico('c-'+e.cat)}</span><span class="main"><div class="t">${esc(e.desc)}</div><div class="who">${av(e.paidBy,'sm')}${ico('i-arrow')}${e.for.length===everyone?'<span>All</span>':stack(e.for)}${e.cc?`<span class="orig">${fmtCc(e.oamt,e.cc)}</span>`:''}${e.photo?ico('i-cam','i tiny'):''}</div></span><span class="rt"><span class="amt">${money(e.amt)}</span>${myLine(e)}</span></button></li>`).join('')+'</ul>';
+      :`<li><button class="row" data-edit="${e.id}"><span class="ic" style="background:${CAT_COL[e.cat]}">${ico('c-'+e.cat)}</span><span class="main"><div class="t">${esc(e.desc)}</div><div class="who"><span>${e.paidBy===me()?'You':esc(first(pname(e.paidBy)))} paid</span><span class="sep">·</span>${e.for.length===everyone?'<span>everyone</span>':stack(e.for)}${e.cc?`<span class="orig">${fmtCc(e.oamt,e.cc)}</span>`:''}${e.photo?ico('i-cam','i tiny'):''}</div></span><span class="rt"><span class="amt">${money(e.amt)}</span>${myLine(e)}</span></button></li>`).join('')+'</ul>';
     h+='</div>';
   });
   $('#exp').innerHTML=h;
+}
+/* "3–6 Oct · 5 people" */
+function tripSub(){
+  const ds=spend().map(e=>e.date).sort(),n=people().length,ppl=n?`${n} ${n===1?'person':'people'}`:'';
+  if(!ds.length)return ppl;
+  const d=x=>new Date(x+'T12:00'),a=d(ds[0]),b=d(ds[ds.length-1]),mon=x=>x.toLocaleDateString('en-GB',{month:'short'});
+  const range=ds[0]===ds[ds.length-1]?`${a.getDate()} ${mon(a)}`:mon(a)===mon(b)&&a.getFullYear()===b.getFullYear()?`${a.getDate()}–${b.getDate()} ${mon(b)}`:`${a.getDate()} ${mon(a)} – ${b.getDate()} ${mon(b)}`;
+  return [range,ppl].filter(Boolean).join(' · ');
 }
 let lastT=[];
 function rBal(){
   const {nets,t}=plan(),couples=hasCouples();lastT=t;
   let h=couples?`<div class="seg" role="group" aria-label="Settle by"><button data-mode="c" aria-pressed="${byCouple()}">Couples</button><button data-mode="p" aria-pressed="${!byCouple()}">Everyone</button></div>`:'';
-  h+='<h2>Who pays who</h2><div class="card">';
-  h+=t.length?t.map(([f,to,m],i)=>`<div class="row srow"><span class="flow">${uAv(f)}<span>${esc(uName(f))}</span>${ico('i-arrow')}${uAv(to)}<span>${esc(uName(to))}</span></span><span class="amt">${money(m)}</span><span class="acts">${rowActs(f,to,m,i)}</span></div>`).join(''):'<div class="square">Everyone is square</div>';
-  h+='</div><div class="actions"><button class="btn primary" id="copy">'+ico('i-copy')+'Copy</button><a class="btn wa" href="https://wa.me/?text='+encodeURIComponent(summary())+'" target="_blank" rel="noopener">'+ico('i-chat')+'WhatsApp</a></div>';
+  const fn=u=>u.ids.map(i=>i===me()?'You':first(pname(i))).join(' & ');
+  const trow=([f,to,m],i)=>`<div class="row srow"><span class="flow">${uAv(f,'sm')}<span class="nm">${esc(fn(f))}</span>${ico('i-arrow')}${uAv(to,'sm')}<span class="nm">${esc(fn(to))}</span></span><span class="amt">${money(m)}</span><span class="acts">${rowActs(f,to,m,i)}</span></div>`;
+  const mu=me(),mineI=t.map((x,i)=>i).filter(i=>!mu||t[i][0].ids.includes(mu)||t[i][1].ids.includes(mu)),otherI=t.map((x,i)=>i).filter(i=>!mineI.includes(i));
+  h+=`<div class="h2row"><h2>Who pays who</h2>${t.length?`<span class="h2acts"><button class="iconbtn sm" id="copy" aria-label="Copy summary">${ico('i-copy')}</button><a class="iconbtn sm wa" href="https://wa.me/?text=${encodeURIComponent(summary())}" target="_blank" rel="noopener" aria-label="Share on WhatsApp">${ico('i-chat')}</a></span>`:''}</div><div class="card">`;
+  if(!t.length)h+='<div class="square">Everyone is square</div>';
+  else{
+    h+=mineI.map(i=>trow(t[i],i)).join('')||'<div class="square sm">Nothing for you to pay or receive</div>';
+    if(otherI.length){const op=!!prefs.othersOpen;
+      h+=`<button class="fold" data-fold="othersOpen" aria-expanded="${op}">Other payments (${otherI.length})${ico('i-chev','i fchev')}</button>`;
+      if(op)h+=otherI.map(i=>trow(t[i],i)).join('');}
+  }
+  h+='</div>';
   /* nudge: you're owed money but haven't said how to be paid */
   const m0=me();
   if(m0&&!hasPay(person(m0))&&t.some(x=>x[1].ids.includes(m0)))
@@ -895,10 +985,12 @@ function rBal(){
   /* recorded payments: tap the ✓ to mark as not paid (Undo puts it back) */
   const pays=expenses().filter(isPay);
   if(pays.length)h+='<h2>Paid</h2><div class="card">'+pays.map(e=>`<div class="row"><span class="flow">${av(e.paidBy)}<span>${esc(pname(e.paidBy))}</span>${ico('i-arrow')}${av(e.for[0])}<span>${esc(pname(e.for[0]))}</span></span><span class="rt"><span class="amt">${money(e.amt)}</span><button class="paidtoggle" data-unpay="${e.id}" aria-pressed="true" aria-label="Paid. Tap to mark as not paid">${ico('i-check','i tiny')}Paid</button></span></div>`).join('')+'</div>';
-  h+='<h2>Balances</h2><div class="card">';
-  nets.forEach(({u,paid,n})=>{
-    h+=`<div class="row">${uAv(u)}<span class="main"><div class="t">${esc(uName(u))}</div><div class="who">Paid ${money(paid)}</div></span><span class="amt ${n>0?'pos':n<0?'neg':''}">${n>0?'+':''}${money(n)}</span></div>`});
-  h+='</div>';
+  const bo=!!prefs.balOpen;
+  h+=`<button class="foldh" data-fold="balOpen" aria-expanded="${bo}"><h2>Balances</h2>${ico('i-chev','i fchev')}</button>`;
+  if(bo){h+='<div class="card">';
+    nets.forEach(({u,paid,n})=>{
+      h+=`<div class="row">${uAv(u)}<span class="main"><div class="t">${esc(uName(u))}</div><div class="who">Paid ${money(paid)}</div></span><span class="amt ${n>0?'pos':n<0?'neg':''}">${n>0?'+':''}${money(n)}</span></div>`});
+    h+='</div>';}
   /* trip summary: spend by category and by person (payments excluded) */
   const sp=spend();
   if(sp.length){
@@ -922,17 +1014,10 @@ function rPpl(){
     if(linking&&(!singles.some(p=>p.id===linking)||singles.length<2))linking=null;
     h+=linking?`<p class="pickhint">Tap ${esc(pname(linking))}'s partner</p>`:'';
     h+='<div class="card" style="margin-top:12px">';
-    units(true).forEach(u=>{
-      if(u.ids.length>1){
-        h+=`<div class="row">${uAv(u,'lg')}<span class="main"><div class="t">${esc(uName(u))}</div></span><button class="x" data-unpair="${u.ids[0]}" aria-label="Unlink ${esc(uName(u))}">${ico('i-unlink')}</button></div>`;
-      }else{
-        const p=person(u.ids[0]),pick=linking&&linking!==p.id;
-        h+=pick?`<button class="row pickme" data-pairwith="${p.id}">${av(p.id,'lg')}<span class="main"><div class="t">${esc(p.name)}</div></span></button>`
-          :`<div class="row${linking===p.id?' linking':''}">${av(p.id,'lg')}<span class="main"><div class="t">${esc(p.name)}</div></span>${singles.length>1?`<button class="x" data-link="${p.id}" aria-label="Pair ${esc(p.name)} as a couple" aria-pressed="${linking===p.id}">${ico('i-link')}</button>`:''}<button class="x" data-rm="${p.id}" aria-label="Remove ${esc(p.name)}">${ico('i-x')}</button></div>`;
-      }
-    });
+    const m=me();
+    people().forEach(p=>{const q=partner(p.id),tags=[p.id===m?'<span class="tag">You</span>':'',q?`<span>Couple with ${esc(first(pname(q)))}</span>`:'',hasPay(p)?`<span class="okpay">${ico('i-check','i tiny')}Payment details</span>`:''].filter(Boolean);
+      h+=`<button class="row" data-person="${p.id}">${av(p.id,'lg')}<span class="main"><div class="t">${esc(p.name)}</div>${tags.length?`<div class="who">${tags.join('<span class="sep">·</span>')}</div>`:''}</span>${ico('i-chev','i rowchev')}</button>`});
     h+='</div>';
-    if(!hasCouples()&&singles.length>1&&!linking)h+=`<p class="hint">Tap ${ico('i-link','i tiny')} to pair a couple. Couples settle up as one.</p>`;
   }
   else h+='<p class="empty">Who\'s on the trip?</p>';
   if(syncOn()){
@@ -967,8 +1052,11 @@ document.addEventListener('click',e=>{
   const ed=e.target.closest('[data-edit]');if(ed)return openSheet(S.expenses.find(x=>x.id===ed.dataset.edit));
   const py=e.target.closest('[data-pay]');if(py)return openPay(S.expenses.find(x=>x.id===py.dataset.pay));
   const mm=e.target.closest('[data-me]');if(mm){setMe(mm.dataset.me);render();if($('#scrim [data-me]'))openSettings();return}
+  const fd=e.target.closest('[data-fold]');if(fd){const k=fd.dataset.fold;prefs[k]=!prefs[k];savePrefs();rBal();return}
+  const mt=e.target.closest('[data-metoggle]');if(mt){prefs.meOpen=mt.getAttribute('aria-expanded')!=='true';savePrefs();rExp();return}
   const gt=e.target.closest('[data-goto]');if(gt){tab=gt.dataset.goto;render();scrollTo(0,0);return}
   const pb=e.target.closest('[data-pay-i]');if(pb){const x=lastT[+pb.dataset.payI];if(x)openPayTo(x[0],x[1],x[2]);return}
+  const pr=e.target.closest('[data-person]');if(pr){openPerson(pr.dataset.person);return}
   const pdd=e.target.closest('[data-paydetails]');if(pdd){openPayDetails(pdd.dataset.paydetails);return}
   const rmd=e.target.closest('[data-remind]');if(rmd){pendingPay=null;return}
   const up2=e.target.closest('[data-unpay]');
