@@ -674,18 +674,22 @@ function openPerson(id){
     <div class="set">
       ${id===m?'<div><label>This is you<small>Shown as “You” on this phone</small></label></div>':`<div><label>This is me<small>See what you owe and are owed</small></label><button class="btn primary" data-me="${id}">Set</button></div>`}
       <div><label>Payment details<small>${hasPay(p)?'Added':'How the group can pay '+esc(first(p.name))}</small></label><button class="btn" data-paydetails="${id}">${hasPay(p)?'Edit':'Add'}</button></div>
-      ${q?`<div><label>Couple with ${esc(pname(q))}<small>Settle up as one</small></label><button class="btn" id="punpair">Unpair</button></div>`
+      ${q?`<div><label>Couple with ${esc(pname(q))}<small>Settle up as one</small></label><button class="btn" id="punpair">Unpair</button></div>
+        <div><label for="pjoint">Joint account<small>Shared money: shown together and never owe each other</small></label><input id="pjoint" class="sw" type="checkbox" role="switch" ${isJoint(id)?'checked':''}></div>`
         :singles.length?`<div class="col"><label>Pair as a couple<small>Tap their partner. Couples settle up as one.</small></label>${`<div class="pick">${singles.map(x=>`<button type="button" class="pa" data-pairto="${x.id}" aria-label="${esc(x.name)}">${av(x.id,'lg')}<span class="pn">${esc(first(x.name))}</span></button>`).join('')}</div>`}</div>`:''}
     </div>
     <button class="btn danger" id="prm">${inUse?`In ${inUse} expense${inUse>1?'s':''}, so it can't be removed`:'Remove from trip'}</button>
   </div>`;
   if(inUse)$('#prm').disabled=true;
+  if($('#pjoint'))$('#pjoint').onchange=e=>{const b=person(q),on=e.target.checked;
+    if(on){p.joint=b.joint=true}else{delete p.joint;delete b.joint}p.u=b.u=now();save();render();
+    toast(on?`${first(p.name)} & ${first(b.name)}: joint account`:`${first(p.name)} & ${first(b.name)}: separate money`)};
   sc.onclick=e=>{
     if(e.target===sc)return close();
     const sm=e.target.closest('[data-me]');if(sm){setMe(sm.dataset.me);close();render();toast(`You're ${first(p.name)} on this phone`);return}
     const pt=e.target.closest('[data-pairto]');
     if(pt){const b=person(pt.dataset.pairto);p.pair=b.id;b.pair=p.id;p.u=b.u=now();save();close();render();toast(`${p.name} & ${b.name} paired`);return}
-    if(e.target.closest('#punpair')){const b=person(q);delete p.pair;delete b.pair;p.u=b.u=now();save();close();render();return}
+    if(e.target.closest('#punpair')){const b=person(q);delete p.pair;delete b.pair;delete p.joint;delete b.joint;p.u=b.u=now();save();close();render();return}
     const rm=e.target.closest('#prm');
     if(rm&&!inUse){if(!rm.dataset.armed){rm.dataset.armed=1;rm.textContent=`Tap again to remove ${first(p.name)}`;return}
       p.del=true;p.u=now();save();close();render();toast(`Removed ${p.name}`,{label:'Undo',fn:()=>{p.del=false;p.u=now();save();render()}})}
@@ -873,11 +877,14 @@ function balances(){
 /* Couples: a pair is stored on both people (p.pair) so it syncs like any other edit */
 const partner=id=>{const p=person(id);if(!p.pair)return null;const q=S.people.find(x=>x.id===p.pair&&!x.del);return q&&q.pair===id?q.id:null};
 const hasCouples=()=>people().some(p=>partner(p.id));
+/* Joint account: the couple shares money, so they always count as one (never a debt between them). Set on both people so it syncs. */
+const isJoint=id=>{const q=partner(id);return !!(q&&person(id).joint&&person(q).joint)};
+const hasSepCouples=()=>people().some(p=>partner(p.id)&&!isJoint(p.id));
 const byCouple=()=>prefs.couples!==false&&hasCouples();
 /* Settling units: a couple counts as one unit when settling by couple, otherwise each person is a unit */
 function units(pair=byCouple()){
   const seen=new Set(),out=[];
-  people().forEach(p=>{if(seen.has(p.id))return;const q=pair?partner(p.id):null;const ids=q?[p.id,q]:[p.id];ids.forEach(i=>seen.add(i));out.push({ids})});
+  people().forEach(p=>{if(seen.has(p.id))return;const q=pair||isJoint(p.id)?partner(p.id):null;const ids=q?[p.id,q]:[p.id];ids.forEach(i=>seen.add(i));out.push({ids})});
   return out;
 }
 const uName=u=>u.ids.map(pname).join(' & ');
@@ -932,12 +939,14 @@ const fmtCc=(p,cc)=>cc+(p/100).toLocaleString('en-GB',{minimumFractionDigits:2,m
 const pickRow=(attr,sel)=>`<div class="pick">${people().map(p=>`<button type="button" class="pa" data-${attr}="${p.id}" aria-pressed="${p.id===sel}" aria-label="${esc(p.name)}">${av(p.id,'lg')}<span class="pn">${esc(first(p.name))}</span></button>`).join('')}</div>`;
 function myLine(e){
   const m=me();if(!m)return '';
-  if(isPay(e))return e.paidBy===m?'<span class="mine none">you paid</span>':e.for.includes(m)?'<span class="mine none">you received</span>':'';
-  const sh=shares(e)[m]||0,paid=e.paidBy===m?e.amt:0,n=paid-sh;
-  if(!paid&&!sh)return '<span class="mine none">not involved</span>';
-  if(n>0)return `<span class="mine pos">you lent ${money(n)}</span>`;
+  /* joint-account couples: count the two of you together, so your partner paying is never a debt */
+  const q=isJoint(m)?partner(m):null,us=q?[m,q]:[m];
+  if(isPay(e))return us.includes(e.paidBy)?`<span class="mine none">${q&&e.paidBy===q?esc(first(pname(q)))+' paid':'you paid'}</span>`:e.for.some(i=>us.includes(i))?'<span class="mine none">you received</span>':'';
+  const sh=shares(e),share=us.reduce((s,i)=>s+(sh[i]||0),0),paid=us.includes(e.paidBy)?e.amt:0,n=paid-share;
+  if(!paid&&!share)return '<span class="mine none">not involved</span>';
+  if(n>0)return `<span class="mine pos">you're owed ${money(n)}</span>`;
   if(n<0)return `<span class="mine neg">you owe ${money(-n)}</span>`;
-  return '<span class="mine none">your share</span>';
+  return `<span class="mine none">just yours</span>`;
 }
 function meCard(){
   const m=me();
@@ -989,7 +998,7 @@ function tripSub(){
 }
 let lastT=[];
 function rBal(){
-  const {nets,t}=plan(),couples=hasCouples();lastT=t;
+  const {nets,t}=plan(),couples=hasSepCouples();lastT=t;
   let h=couples?`<div class="seg" role="group" aria-label="Settle by"><button data-mode="c" aria-pressed="${byCouple()}">Couples</button><button data-mode="p" aria-pressed="${!byCouple()}">Everyone</button></div>`:'';
   const fn=u=>u.ids.map(i=>i===me()?'You':first(pname(i))).join(' & ');
   /* couples (or long names) need room: names on the first line, amount + button on the second */
@@ -1044,7 +1053,7 @@ function rPpl(){
     h+=linking?`<p class="pickhint">Tap ${esc(pname(linking))}'s partner</p>`:'';
     h+='<div class="card" style="margin-top:12px">';
     const m=me();
-    people().forEach(p=>{const q=partner(p.id),tags=[p.id===m?'<span class="tag">You</span>':'',q?`<span>Couple with ${esc(first(pname(q)))}</span>`:'',hasPay(p)?`<span class="okpay">${ico('i-check','i tiny')}Payment details</span>`:''].filter(Boolean);
+    people().forEach(p=>{const q=partner(p.id),tags=[p.id===m?'<span class="tag">You</span>':'',q?`<span>Couple with ${esc(first(pname(q)))}${isJoint(p.id)?' · joint account':''}</span>`:'',hasPay(p)?`<span class="okpay">${ico('i-check','i tiny')}Payment details</span>`:''].filter(Boolean);
       h+=`<button class="row" data-person="${p.id}">${av(p.id,'lg')}<span class="main"><div class="t">${esc(p.name)}</div>${tags.length?`<div class="who">${tags.join('<span class="sep">·</span>')}</div>`:''}</span>${ico('i-chev','i rowchev')}</button>`});
     h+='</div>';
   }
@@ -1098,12 +1107,12 @@ document.addEventListener('click',e=>{
   const pw=e.target.closest('[data-pairwith]');
   if(pw&&linking){const a=person(linking),b=person(pw.dataset.pairwith);a.pair=b.id;b.pair=a.id;a.u=b.u=now();linking=null;save();render();toast(`${a.name} & ${b.name} paired`);return}
   const up=e.target.closest('[data-unpair]');
-  if(up){const a=person(up.dataset.unpair),b=person(partner(a.id));delete a.pair;delete b.pair;a.u=b.u=now();save();render();return}
+  if(up){const a=person(up.dataset.unpair),b=person(partner(a.id));delete a.pair;delete b.pair;delete a.joint;delete b.joint;a.u=b.u=now();save();render();return}
   const md=e.target.closest('[data-mode]');if(md){prefs.couples=md.dataset.mode==='c';savePrefs();rBal();return}
   const rm=e.target.closest('[data-rm]');
   if(rm){const id=rm.dataset.rm,n=expenses().filter(x=>x.paidBy===id||x.for.includes(id)).length;
     if(n){$('#pmsg').textContent=`${pname(id)} is in ${n} expense${n>1?'s':''}. Remove those first.`;return}
-    const p=S.people.find(x=>x.id===id),q=partner(id);if(q){const o=person(q);delete o.pair;o.u=now()}delete p.pair;p.del=true;p.u=now();save();render();return}
+    const p=S.people.find(x=>x.id===id),q=partner(id);if(q){const o=person(q);delete o.pair;delete o.joint;o.u=now()}delete p.pair;delete p.joint;p.del=true;p.u=now();save();render();return}
   if(e.target.closest('#copy'))copy(summary(),'Copied');
   if(e.target.closest('#copyLink'))copy(tripLink(),'Link copied');
 });

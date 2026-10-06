@@ -111,3 +111,26 @@ test('Settle up rows: couples get two lines (full names, then amount + button); 
     prefs.me={[S.id]:'c'};tab='bal';save();render()`);
   assert.ok(!$('.srow').classList.contains('two'), '"You → Sue" fits on one line');
 });
+
+test('person menu: joint account switch (couples only), shown in Group, synced, cleared on unpair', () => {
+  const P = load(); P.trip([{ id: 'c', name: 'Chris', pair: 'l' }, { id: 'l', name: 'Leanne', pair: 'c' }, { id: 'd', name: 'David' }], [{ id: 'x', amt: 3000, paidBy: 'l', for: ['c', 'l', 'd'] }]);
+  const $ = s => P.w.document.querySelector(s), txt = el => el.textContent.replace(/\s+/g, ' ').trim();
+  try {
+    P.run(`prefs.me={[S.id]:'c'};tab='ppl';render()`);
+    P.run(`document.querySelector('[data-person="d"]').click()`);
+    assert.equal($('#pjoint'), null, 'no switch for someone without a partner');
+    P.run(`close()`);
+    P.run(`document.querySelector('[data-person="c"]').click()`);
+    assert.equal($('#pjoint').checked, false, 'off by default');
+    const u0 = P.run(`person('l').u`);
+    P.run(`const j=document.querySelector('#pjoint');j.checked=true;j.onchange({target:j})`);
+    assert.deepEqual(P.run(`[person('c').joint,person('l').joint]`), [true, true], 'set on both');
+    assert.ok(P.run(`person('l').u`) > u0, 'syncs');
+    assert.match(txt($('[data-person="c"] .who')), /Couple with Leanne · joint account/);
+    P.run(`close();tab='exp';open=new Set(['2026-10-01']);render()`);
+    assert.match(txt($('[data-edit="x"]')), /you're owed €10\.00/);
+    P.run(`close();tab='ppl';render();document.querySelector('[data-person="l"]').click()`);
+    P.run(`document.querySelector('#punpair').click()`);
+    assert.deepEqual(P.run(`[!!person('c').joint,!!person('l').joint,!!person('c').pair]`), [false, false, false], 'unpair clears it');
+  } finally { P.w.close(); }
+});
