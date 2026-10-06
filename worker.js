@@ -38,7 +38,7 @@ const SCAN_CUR = { EUR: '€', GBP: '£', USD: '$', CHF: 'CHF', '€': '€', '�
 const scanNum = v => {
   if (typeof v === 'number') return v;
   if (typeof v !== 'string') return NaN;
-  let t = v.replace(/[^\d.,]/g, '');
+  let t = v.replace(/[^\d.,]/g, '').replace(/[.,]+$/, '');
   const i = Math.max(t.lastIndexOf('.'), t.lastIndexOf(','));
   t = i >= 0 && t.length - i - 1 <= 2 ? t.slice(0, i).replace(/[.,]/g, '') + '.' + t.slice(i + 1) : t.replace(/[.,]/g, '');
   return parseFloat(t);
@@ -57,9 +57,14 @@ function scanDate(v, today) {
 }
 // Pull a validated result out of whatever the model said
 export function parseScan(text, today) {
-  const m = String(text || '').match(/\{[\s\S]*\}/);
-  if (!m) return null;
-  let j; try { j = JSON.parse(m[0]); } catch { return null; }
+  const t = String(text || ''), m = t.match(/\{[\s\S]*\}/);
+  let j = null;
+  if (m) try { j = JSON.parse(m[0]); } catch { }
+  if (!j) {
+    // not valid JSON (e.g. "total": 65,90 or a reply cut short): pick the fields out one by one
+    const f = k => { const x = t.match(new RegExp('"?' + k + '"?\\s*:\\s*("([^"]*)"|[\\d][\\d.,]*)', 'i')); return x ? (x[2] ?? x[1]) : null; };
+    j = { total: f('total'), currency: f('currency'), date: f('date'), merchant: f('merchant'), type: f('type') };
+  }
   const total = scanNum(j.total);
   const out = {
     total: total > 0 && total < 100000 ? Math.round(total * 100) / 100 : null,
@@ -70,14 +75,29 @@ export function parseScan(text, today) {
   };
   return out.total || out.date || out.merchant ? out : null;
 }
-async function runScanModel(env, image) {
-  const input = { messages: [{ role: 'user', content: SCAN_PROMPT }], image, max_tokens: 160, temperature: 0 };
-  try { return await env.AI.run(SCAN_MODEL, input); }
+async function runScanModel(env, bytes) {
+  // Workers AI documents the image as an array of bytes; fall back to a data URL if this account wants a string
+  const call = image => env.AI.run(SCAN_MODEL, { messages: [{ role: 'user', content: SCAN_PROMPT }], image, max_tokens: 256, temperature: 0 });
+  const tryBoth = async () => {
+    try { return await call([...bytes]); }
+    catch (e) { if (/agree|licen[cs]e/i.test(String(e && e.message))) throw e; return await call(dataUrl(bytes)); }
+  };
+  try { return await tryBoth(); }
   catch (e) {
     // Meta's licence must be accepted once per Cloudflare account; do it automatically and retry
-    if (/agree|licen[cs]e/i.test(String(e && e.message))) { await env.AI.run(SCAN_MODEL, { prompt: 'agree' }); return await env.AI.run(SCAN_MODEL, input); }
+    if (/agree|licen[cs]e/i.test(String(e && e.message))) { await env.AI.run(SCAN_MODEL, { prompt: 'agree' }); return await tryBoth(); }
     throw e;
   }
+}
+function dataUrl(b) {
+  let bin = ''; for (let i = 0; i < b.length; i += 8192) bin += String.fromCharCode.apply(null, b.subarray(i, i + 8192));
+  return 'data:image/jpeg;base64,' + btoa(bin);
+}
+// The reply can come back as text, or already parsed into an object
+export function scanText(r) {
+  const v = r && typeof r === 'object' && 'response' in r ? r.response : r && typeof r === 'object' && 'result' in r ? r.result : r;
+  if (v && typeof v === 'object') return v.response !== undefined ? scanText(v) : JSON.stringify(v);
+  return String(v ?? '');
 }
 async function handleScan(req, env, trip) {
   if (req.method !== 'POST') return json({ error: 'method not allowed' }, 405);
@@ -93,13 +113,12 @@ async function handleScan(req, env, trip) {
   if (!buf.byteLength || buf.byteLength > MAX_SCAN_BYTES) return json({ error: 'bad image size' }, 413);
   const b = new Uint8Array(buf);
   if (!(b[0] === 0xff && b[1] === 0xd8)) return json({ error: 'not a jpeg' }, 400);
-  let bin = ''; for (let i = 0; i < b.length; i += 8192) bin += String.fromCharCode.apply(null, b.subarray(i, i + 8192));
   await env.TRIPS.put(ck, String(used + 1), { expirationTtl: 2 * 86400 });
   let r;
-  try { r = await runScanModel(env, 'data:image/jpeg;base64,' + btoa(bin)); }
-  catch (e) { return json({ error: 'ai unavailable' }, 503); }
-  const found = parseScan(r && (r.response ?? r.result ?? r), today);
-  if (!found) return json({ error: 'unreadable' }, 422);
+  try { r = await runScanModel(env, b); }
+  catch (e) { console.log('scan: AI error', String(e && e.message)); return json({ error: 'ai unavailable', detail: String(e && e.message || e).slice(0, 160) }, 503); }
+  const text = scanText(r), found = parseScan(text, today);
+  if (!found) { console.log('scan: unreadable reply', text.slice(0, 300)); return json({ error: 'unreadable', detail: text.slice(0, 160) }, 422); }
   return json({ ok: true, ...found, usage: (r && r.usage) || null });
 }
 
