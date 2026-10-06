@@ -38,12 +38,14 @@ test('bank reference fits the UK 18-character limit', () => {
 
 test('buttons depend on who you are: payer sees Pay, the person owed sees Remind and Mark paid', () => {
   trip('£', 's');
-  const row = () => [...$$('.srow')[0].querySelectorAll('.acts > *')].map(b => b.textContent.trim()).join(' ');
+  const label = b => b.getAttribute('aria-label') || b.textContent.trim();
+  const row = () => [...$$('.srow')[0].querySelectorAll('.acts > *')].map(label).join(' ');
   assert.equal(row(), 'Pay');
   trip('£', 'c');
-  assert.equal(row(), 'Remind Mark paid');
+  assert.equal(row(), 'Remind on WhatsApp Mark paid');
   trip('£', 'a');
-  assert.equal([...$$('.srow').find(r => r.textContent.includes('Sam')).querySelectorAll('.acts > *')].map(b => b.textContent.trim()).join(' '), 'Mark paid', 'someone else\'s debt');
+  P.run(`prefs.othersOpen=true;render()`);
+  assert.equal([...$$('.srow').find(r => r.textContent.includes('Sam')).querySelectorAll('.acts > *')].map(label).join(' '), 'Mark paid', 'someone else\'s debt');
 });
 
 test('Remind sends a WhatsApp message with the amount and how to pay', () => {
@@ -102,7 +104,7 @@ test('payee without details: Pay offers to add them or ask on WhatsApp', () => {
   // Alex pays a big bill and has no payment details; Sam (this phone) owes Alex
   trip('£', 's');
   P.run(`S.expenses.push({id:'x2',desc:'Villa',amt:18000,date:'2026-10-05',paidBy:'a',for:['c','s','a'],cat:'stay',u:3});render()`);
-  const toAlex = $$('.srow').find(r => /Sam.*Alex/.test(r.textContent));
+  const toAlex = $$('.srow').find(r => /You.*Alex/.test(r.textContent));
   assert.ok(toAlex, 'Sam owes Alex');
   click(toAlex.querySelector('[data-pay-i]'));
   assert.match($('.askpay').textContent, /hasn't added payment details/);
