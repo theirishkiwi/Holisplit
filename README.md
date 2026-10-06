@@ -6,7 +6,7 @@ wrangler.jsonc     config: static assets + KV namespace "TRIPS"
 
 ## Tests
 npm install
-npm test      (50 tests: split maths, settling, couples, payments, currencies, amount entry, dates, worker sync, photos, link reset, encryption, delete and restore, closing screens, paid toggle, payment links)
+npm test      (56 tests: split maths, settling, couples, payments, currencies, amount entry, dates, worker sync, photos, link reset, encryption, delete and restore, closing screens, paid toggle, payment links, permanent delete)
 
 ## Deploy (one time)
 1. npx wrangler login
@@ -26,6 +26,8 @@ Settings -> Delete this trip asks first. "Remove from this phone" leaves the gro
 "Delete for everyone" (two taps) removes it from every phone. Either can be restored from
 Settings -> Recently deleted (or the banner on the trip) for 30 days. After that the phone clears it
 and the server copy expires.
+To remove one sooner, tap Delete next to it in Recently deleted and type DELETE. A trip deleted
+for everyone is then erased from the server with its photos, and no phone can bring it back.
 
 ## Paying
 Each person can add Monzo, Revolut or Starling Settle Up names and UK bank details
