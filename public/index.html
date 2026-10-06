@@ -1205,7 +1205,7 @@ function openSheet(ex){
     }
     const id=isNew?uid():ex.id;
     /* duplicate check: new expenses, or edits that change amount/date/description */
-    const cand={id,desc:d,amt,date:dt,cc:cur.cc,oamt:cur.oamt,notdup:ex?.notdup};
+    const cand={id,desc:d,amt,date:dt,cat:f.cat||matchCat(d)||null,cc:cur.cc,oamt:cur.oamt,notdup:ex?.notdup};
     const changed=isNew||ex.amt!==amt||ex.date!==dt||ex.desc!==d;
     const dups=changed&&!f.dupOk?findDups(cand):[];
     if(dups.length){
@@ -1227,27 +1227,30 @@ function openSheet(ex){
     save();close();tab='exp';render();toast(isNew?'Added':'Saved');
   };
 }
-/* ---- Duplicates: same amount and shop within 2 days, same amount on the same day, or the same shop on the same day ----
+/* ---- Duplicates: the amount must match (to the cent, or the same foreign amount), and then
+   - the same shop name within 2 days, or
+   - the same day, when the names don't clash and the type matches (e.g. "Groceries" vs "Eurospin").
+   Different shop names, different types or different amounts are never flagged.
    "Not a duplicate" is remembered on the expense (notdup) and syncs, so nobody is asked twice. */
-const DUP_GENERIC=new Set(['dinner','lunch','breakfast','brunch','coffee','coffees','drinks','food','groceries','supermarket','expense','restaurant','cafe','taxi','ticket','tickets','shop','shopping','snacks','pizza','gelato','payment']);
-const normTxt=t=>String(t||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,' ').trim();
-function sameShop(a,b){
-  const x=normTxt(a),y=normTxt(b);if(x.length<3||y.length<3)return false;
-  const words=t=>t.split(' ').filter(w=>w.length>=4&&!DUP_GENERIC.has(w));
-  if(x===y)return words(x).length>0;
-  const wy=words(y);return words(x).some(w=>wy.includes(w));
-}
+const DUP_GENERIC=new Set(['dinner','lunch','breakfast','brunch','coffee','coffees','drinks','food','groceries','supermarket','expense','restaurant','cafe','taxi','ticket','tickets','shop','shopping','snacks','pizza','gelato','payment','with','from','the','and','for']);
+const normTxt=t=>String(t||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,' ').trim();
+const shopWords=t=>normTxt(t).split(' ').filter(w=>w.length>=4&&!DUP_GENERIC.has(w)&&!/^\d+$/.test(w));
 const dayGap=(a,b)=>Math.abs(new Date(a+'T12:00')-new Date(b+'T12:00'))/864e5;
 const sameAmount=(a,b)=>a.amt===b.amt||(!!a.cc&&a.cc===b.cc&&a.oamt===b.oamt);
+const dupCat=e=>e.cat&&e.cat!=='other'?e.cat:(matchCat(e.desc||'')||null);
 /* why two expenses look like duplicates, or '' if they don't */
 function dupReason(a,b){
   if(!a||!b||a.id===b.id||a.del||b.del||isPay(a)||isPay(b))return '';
   if((a.notdup||[]).includes(b.id)||(b.notdup||[]).includes(a.id))return '';
-  const amt=sameAmount(a,b),shop=sameShop(a.desc,b.desc),gap=dayGap(a.date,b.date);
-  if(amt&&shop&&gap<=2)return 'Same amount and shop';
-  if(amt&&gap===0)return 'Same amount, same day';
-  if(shop&&gap===0)return 'Same shop, same day';
-  return '';
+  if(!sameAmount(a,b))return '';
+  const gap=dayGap(a.date,b.date);if(gap>2)return '';
+  const wa=shopWords(a.desc),wb=shopWords(b.desc);
+  if(wa.length&&wb.length)return wa.some(w=>wb.includes(w))?'Same amount and shop':'';
+  if(gap!==0)return '';
+  const ca=dupCat(a),cb=dupCat(b);
+  if(ca&&cb&&ca!==cb)return '';
+  if(!wa.length&&!wb.length&&normTxt(a.desc)!==normTxt(b.desc)&&!(ca&&ca===cb))return '';
+  return 'Same amount, same day';
 }
 const findDups=c=>expenses().filter(e=>dupReason(c,e)).map(e=>({e,why:dupReason(c,e)}));
 function dupPairs(){
@@ -1349,7 +1352,7 @@ function applyScan(r,f,draw,show){
   if(filled.length)show(`${ico('i-check','i tiny')}Filled from receipt: <b>${esc(filled.join(' · '))}</b>. Check before saving.`);
   else show(`Receipt total ${esc(amtTxt||'not found')}.`);
   const amtNow=toPence($('#famt').value),rateNow=parseFloat(String($('#frate').value).replace(',','.'));
-  const cand={id:'_new',desc:$('#fdesc').value,date:$('#fdate').value,amt:f.cc!==S.cur&&rateNow>0?Math.round(amtNow*rateNow):amtNow,cc:f.cc!==S.cur?f.cc:null,oamt:f.cc!==S.cur?amtNow:null};
+  const cand={id:'_new',desc:$('#fdesc').value,date:$('#fdate').value,cat:f.cat||null,amt:f.cc!==S.cur&&rateNow>0?Math.round(amtNow*rateNow):amtNow,cc:f.cc!==S.cur?f.cc:null,oamt:f.cc!==S.cur?amtNow:null};
   const d0=amtNow>0?findDups(cand)[0]:null;
   if(d0)$('#scanmsg').insertAdjacentHTML('beforeend',`<span class="dupwarn">${ico('i-x','i tiny')}Looks like ${dupLine(d0.e)}. Check it isn't a duplicate.</span>`);
   if(differs){const m=$('#scanmsg');m.insertAdjacentHTML('beforeend',` <button type="button" class="ghost" id="useTotal">Use ${esc(amtTxt)}</button>`);

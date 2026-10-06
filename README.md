@@ -51,4 +51,8 @@ scans a day. The Worker returns the model's token usage with each scan, and Clou
 dashboard (AI > Workers AI) shows the exact neurons used.
 
 ## Duplicate checks
-Before adding an expense the app checks for one that looks the same: same amount and shop within 2 days, same amount on the same day, or same shop on the same day. Words like "dinner" or "groceries" don't count as a shop. You can choose "Don't add" or "Add anyway". Editing an expense is checked the same way, but only when its amount, date or description changes. A scanned receipt is checked as soon as it's read. Duplicates already in the trip appear in a "possible duplicates · Review" notice on Expenses: delete one (with Undo) or mark the pair "Not duplicates". That choice syncs, so nobody is asked again.
+A duplicate always needs the **same amount** (to the cent, or the same foreign amount), plus one of:
+- the same shop name within 2 days ("Eurospin" and "EUROSPIN Italia"), or
+- the same day, where only one has a shop name and the type matches ("Groceries" and "Eurospin").
+
+These are never flagged: different amounts, two different shop names, different types (a €12 ferry and a €12 gelato), or anything more than 2 days apart. "Dinner" or "Groceries" don't count as shop names. You can choose "Don't add" or "Add anyway". Editing an expense is checked only when its amount, date or description changes. A scanned receipt is checked as soon as it's read. Duplicates already in the trip appear in a "possible duplicates · Review" notice on Expenses: delete one (with Undo) or mark the pair "Not duplicates". That choice syncs, so nobody is asked again.
