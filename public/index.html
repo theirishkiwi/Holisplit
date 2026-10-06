@@ -251,6 +251,12 @@ a.paidbtn{text-decoration:none;display:inline-block}
 .okpay{color:var(--pos);display:inline-flex;align-items:center;gap:2px}
 .pa[data-pairto]{opacity:1;filter:none}
 .srow .flow{gap:5px}
+.srow.two{flex-direction:column;align-items:stretch;gap:8px;padding:12px 10px}
+.srow.two .flow{flex-wrap:wrap;row-gap:4px}
+.srow.two .nm{white-space:normal;overflow:visible}
+.srow.two .line2{display:flex;align-items:center;justify-content:space-between;gap:10px;padding-left:2px}
+.srow.two .amt{font-size:1.1rem}
+.srow.two+.srow.two{border-top:1px solid var(--line);border-radius:0}
 .rowchev{color:var(--muted);width:18px;height:18px}
 .paidtoggle{border:0;background:var(--wa);color:var(--wa-ink);border-radius:999px;padding:4px 10px 4px 8px;font-size:.78rem;font-weight:700;display:inline-flex;align-items:center;gap:4px}
 .paidtoggle svg.i{stroke-width:2.6}
@@ -967,7 +973,11 @@ function rBal(){
   const {nets,t}=plan(),couples=hasCouples();lastT=t;
   let h=couples?`<div class="seg" role="group" aria-label="Settle by"><button data-mode="c" aria-pressed="${byCouple()}">Couples</button><button data-mode="p" aria-pressed="${!byCouple()}">Everyone</button></div>`:'';
   const fn=u=>u.ids.map(i=>i===me()?'You':first(pname(i))).join(' & ');
-  const trow=([f,to,m],i)=>`<div class="row srow"><span class="flow">${uAv(f,'sm')}<span class="nm">${esc(fn(f))}</span>${ico('i-arrow')}${uAv(to,'sm')}<span class="nm">${esc(fn(to))}</span></span><span class="amt">${money(m)}</span><span class="acts">${rowActs(f,to,m,i)}</span></div>`;
+  /* couples (or long names) need room: names on the first line, amount + button on the second */
+  const roomy=t.some(([f,to])=>f.ids.length>1||to.ids.length>1||(fn(f)+fn(to)).length>10);
+  const trow=([f,to,m],i)=>roomy
+    ?`<div class="row srow two"><span class="flow">${uAv(f,'sm')}<span class="nm">${esc(fn(f))}</span>${ico('i-arrow')}${uAv(to,'sm')}<span class="nm">${esc(fn(to))}</span></span><span class="line2"><span class="amt">${money(m)}</span><span class="acts">${rowActs(f,to,m,i)}</span></span></div>`
+    :`<div class="row srow"><span class="flow">${uAv(f,'sm')}<span class="nm">${esc(fn(f))}</span>${ico('i-arrow')}${uAv(to,'sm')}<span class="nm">${esc(fn(to))}</span></span><span class="amt">${money(m)}</span><span class="acts">${rowActs(f,to,m,i)}</span></div>`;
   const mu=me(),mineI=t.map((x,i)=>i).filter(i=>!mu||t[i][0].ids.includes(mu)||t[i][1].ids.includes(mu)),otherI=t.map((x,i)=>i).filter(i=>!mineI.includes(i));
   h+=`<div class="h2row"><h2>Who pays who</h2>${t.length?`<span class="h2acts"><button class="iconbtn sm" id="copy" aria-label="Copy summary">${ico('i-copy')}</button><a class="iconbtn sm wa" href="https://wa.me/?text=${encodeURIComponent(summary())}" target="_blank" rel="noopener" aria-label="Share on WhatsApp">${ico('i-chat')}</a></span>`:''}</div><div class="card">`;
   if(!t.length)h+='<div class="square">Everyone is square</div>';
