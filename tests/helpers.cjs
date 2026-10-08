@@ -13,6 +13,7 @@ function load(opts = {}) {
       Object.defineProperty(w, 'crypto', { value: webcrypto, configurable: true });
       w.TextEncoder = TextEncoder; w.TextDecoder = TextDecoder; w.Blob = Blob;
       w.URL.createObjectURL = b => { w.__lastBlob = b; return 'blob:test'; }; w.URL.revokeObjectURL = () => {};
+      if (opts.before) opts.before(w);   // e.g. seed localStorage as a returning phone
     },
   });
   const w = dom.window;

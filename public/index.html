@@ -47,6 +47,8 @@ header{display:flex;align-items:center;gap:8px;padding-block:18px 12px}
 
 .banner{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:space-between;background:var(--note);color:var(--note-ink);border-radius:14px;padding:8px 8px 8px 14px;font-size:.9rem;font-weight:500;margin-bottom:12px}
 .banner span{flex:1;min-width:10em}
+.banner.offline{flex-wrap:nowrap}.banner.offline>svg.i{flex:none;width:20px;height:20px}
+#cloud[data-s="offline"]{opacity:1;color:var(--note-ink)}
 .banner .bb{display:flex;gap:6px}
 .banner button{background:var(--card);border:0;color:var(--fg);border-radius:9px;padding:7px 12px;font-weight:600}
 
@@ -165,7 +167,6 @@ h2{font:600 .78rem var(--body);text-transform:uppercase;letter-spacing:.08em;col
 @media (prefers-reduced-motion:no-preference){.sheet{animation:up .18s ease-out}@keyframes up{from{transform:translateY(30px);opacity:.6}}}
 /* sync + trips */
 #cloud[data-s="ok"]{color:var(--go)}
-#cloud[data-s="offline"]{opacity:.45}
 @media (prefers-reduced-motion:no-preference){#cloud[data-s="sync"] svg{animation:pulse 1s ease-in-out infinite}@keyframes pulse{50%{opacity:.3}}}
 .set .trip{width:100%;border:0;background:none;text-align:left;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 0;font-weight:600;border-bottom:1px solid var(--line)}
 .set .trip:last-child{border-bottom:0}
@@ -322,6 +323,7 @@ a.paidbtn{text-decoration:none;display:inline-block}
   <p class="tripsub" id="tripsub"></p>
   <div class="banner" id="deleted" hidden><span id="delText"></span><button id="restoreBtn">Restore</button></div>
   <div class="banner" id="revoked" hidden><span>This trip's link was reset. Open the new link from the group to keep syncing. Your changes will carry over.</span></div>
+  <div class="banner offline" id="offline" hidden role="status"><svg class="i"><use href="#i-cloudoff"/></svg><span id="offText"></span><button id="retryBtn">Retry</button></div>
   <div class="banner" id="sample" hidden><span>Example trip</span><button id="clearSample">Start fresh</button></div>
   <nav class="tabs" role="tablist">
     <button role="tab" data-tab="exp">Expenses</button>
@@ -353,6 +355,7 @@ a.paidbtn{text-decoration:none;display:inline-block}
   <symbol id="i-expand" viewBox="0 0 24 24"><path d="m7 15 5 5 5-5M7 9l5-5 5 5"/></symbol>
   <symbol id="i-collapse" viewBox="0 0 24 24"><path d="m7 20 5-5 5 5M7 4l5 5 5-5"/></symbol>
   <symbol id="i-cloud" viewBox="0 0 24 24"><path d="M7 18a4.5 4.5 0 0 1-.6-9A6 6 0 0 1 18 9.5a4.3 4.3 0 0 1-.5 8.5z"/></symbol>
+  <symbol id="i-cloudoff" viewBox="0 0 24 24"><path d="M7 18a4.5 4.5 0 0 1-.6-9A6 6 0 0 1 9 5.2M12.5 4.2A6 6 0 0 1 18 9.5a4.3 4.3 0 0 1 2.3 7.2M17.5 18H7"/><path d="M3 3l18 18"/></symbol>
   <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></symbol>
   <symbol id="i-unlink" viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1M4 4l16 16"/></symbol>
   <symbol id="i-pay" viewBox="0 0 24 24"><path d="M4 8h14l-3-3M20 16H6l3 3"/></symbol>
@@ -481,12 +484,22 @@ function ahead(loc,rem){
   if(!rem)return true;if((loc.nu||0)>(rem.nu||0)||(loc.du||0)>(rem.du||0))return true;
   return ['people','expenses'].some(k=>loc[k].some(x=>{const r=(rem[k]||[]).find(y=>y.id===x.id);return !r||(x.u||0)>(r.u||0)}));
 }
-const ready=fetch('/api/ping',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(j=>{syncAvail=!!(j&&j.ok);scanAvail=!!(j&&j.scan)}).catch(()=>{}).then(()=>{setNet(syncOn()?'sync':'off');sync()});
-function setNet(s){const c=$('#cloud');c.hidden=!syncOn();c.dataset.s=s;c.setAttribute('aria-label',{ok:'Synced',sync:'Syncing',offline:'Offline. Tap to retry'}[s]||'Sync')}
+/* Is there a sync server? Once the app has reached it, remember that, so opening with no signal shows "offline"
+   (and syncs by itself when signal returns) instead of hiding sync until the next reload. */
+function ping(){return fetch('/api/ping',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(j=>{
+    if(j&&j.ok){syncAvail=true;scanAvail=!!j.scan;if(!prefs.hosted){prefs.hosted=true;savePrefs()}}
+    else if(!prefs.hosted)syncAvail=false;
+  }).catch(()=>{if(prefs.hosted){syncAvail=true;return 'offline'}})}
+const ready=ping().then(o=>{setNet(o==='offline'&&syncOn()?'offline':syncOn()?'sync':'off');if(o!=='offline')sync()});
+function setNet(s){const c=$('#cloud'),on=syncOn();c.hidden=!on;c.dataset.s=s;c.setAttribute('aria-label',{ok:'Synced',sync:'Syncing',offline:'Offline. Tap to retry'}[s]||'Sync');
+  c.querySelector('use').setAttribute('href',s==='offline'?'#i-cloudoff':'#i-cloud');
+  const b=$('#offline');if(!b)return;b.hidden=!(on&&s==='offline');
+  if(!b.hidden)$('#offText').textContent=S.dirty?'You\'re offline. Your changes are saved on this phone and will sync when you\'re back online.':'You\'re offline. You can still add and edit expenses. They\'ll sync when you\'re back online.'}
 function kick(){clearTimeout(kickT);kickT=setTimeout(sync,500)}
 async function sync(){
   if(!syncOn())return;
   if(syncing){again=true;return}
+  if(navigator.onLine===false){setNet('offline');return}
   syncing=true;setNet('sync');
   const trip=S,sent=seq,hdr={'content-type':'application/json'};
   const gone=async r=>{let why='';try{why=(await r.json()).error}catch(e){}
@@ -536,7 +549,8 @@ function mergeIn(t){
 }
 setInterval(()=>{if(!document.hidden)sync()},30000);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)sync()});
-window.addEventListener('online',sync);
+window.addEventListener('online',()=>{if(!scanAvail||!syncAvail)ping().then(()=>sync());else sync()});
+window.addEventListener('offline',()=>{if(syncOn())setNet('offline')});
 
 /* ---- Trips: switch, create, join by link ---- */
 function switchTo(t){const l=prefs.trips.find(x=>x.id===t.id);if(l)l.local=null;S=fix(t);open=null;tab='exp';persist();render();setNet(syncOn()?'sync':'off');sync()}
@@ -1072,6 +1086,9 @@ $('#trip').onchange=e=>{S.name=e.target.value.trim()||'Trip';S.nu=now();save();r
 $('#clearSample').onclick=newTrip;
 $('#gear').onclick=openSettings;
 $('#cloud').onclick=()=>sync();
+$('#retryBtn').onclick=async()=>{const b=$('#retryBtn');b.disabled=true;b.textContent='Trying…';
+  if(!scanAvail)await ping();await sync();b.disabled=false;b.textContent='Retry';
+  if($('#cloud').dataset.s==='offline')toast('Still offline');else toast('Back online. Synced')};
 
 function toast(t,act){
   const el=$('#toast');el.innerHTML=`<span>${esc(t)}</span>${act?`<button type="button">${esc(act.label)}</button>`:''}`;el.hidden=false;
