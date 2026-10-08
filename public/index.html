@@ -241,6 +241,14 @@ a.paidbtn{text-decoration:none;display:inline-block}
 .h2acts{display:flex;gap:6px}
 .iconbtn.sm{width:34px;height:34px;border-radius:10px}
 .iconbtn.wa{background:var(--wa);color:var(--wa-ink)}
+.sxbar{display:flex;align-items:center;gap:8px;width:100%;border:0;background:var(--card);border-radius:14px;padding:10px 12px 10px 14px;margin:0 0 10px;text-align:left;color:var(--fg);font:500 .9rem var(--body)}
+.sxbar span{flex:1;min-width:0}.sxbar small{color:var(--muted);font-size:.78rem;white-space:nowrap}.sxbar svg{flex:none}
+.payrate{margin:-2px 0 10px;color:var(--muted);font-size:.82rem;text-align:center}
+.ccpick{display:flex;flex-wrap:wrap;gap:8px}
+.ccopt{min-width:54px;padding:10px 12px;border-radius:12px;border:1.5px solid var(--line);background:var(--card);font:600 1rem var(--body);color:var(--fg)}
+.ccopt[aria-pressed="true"]{border-color:var(--accent);background:var(--soft);color:var(--soft-ink)}
+.ratebox{display:flex;align-items:center;gap:8px;margin-top:4px}.ratebox b{font-size:1.05rem;white-space:nowrap}.ratebox .field{flex:1;font-size:1.1rem}
+.rateinfo{color:var(--muted);font-size:.85rem;margin:8px 2px 0;line-height:1.4}
 .fold{display:flex;align-items:center;justify-content:space-between;width:100%;border:0;border-top:1px solid var(--line);background:none;padding:12px 8px 8px;color:var(--muted);font-weight:600;font-size:.88rem}
 .foldh{display:flex;align-items:center;gap:6px;border:0;background:none;padding:0;color:var(--muted)}
 .foldh h2{margin:22px 0 8px 4px}
@@ -544,6 +552,7 @@ function mergeIn(t){
   if((t.nu||0)>(S.nu||0)){S.name=t.name;S.cur=t.cur;S.nu=t.nu;changed++}
   if(!S.pk&&t.pk)S.pk=t.pk;
   if((t.du||0)>(S.du||0)){S.del=t.del||null;S.delBy=t.delBy||null;S.du=t.du;changed++}
+  if((t.sxu||0)>(S.sxu||0)){S.sx=t.sx||null;S.sxu=t.sxu;changed++}
   fix(S);persist();
   if(changed){if(open&&added)expenses().forEach(e=>open.add(e.date));render();if(added)toast(`${added} new from the group`)}
 }
@@ -598,9 +607,9 @@ const digits=v=>String(v||'').replace(/\D/g,'');
 const fmtSort=v=>{const d=digits(v);return d.length===6?`${d.slice(0,2)}-${d.slice(2,4)}-${d.slice(4)}`:''};
 const hasPay=p=>!!(p&&p.pay&&Object.values(p.pay).some(Boolean));
 const bankRef=payer=>`${S.name} ${first(pname(payer))}`.replace(/[^A-Za-z0-9 &.-]/g,'').trim().slice(0,18);   /* UK references max 18 chars */
-/* the link for one service; Monzo is sterling-only, so the amount is only filled in on a £ trip */
+/* the link for one service; Monzo is sterling-only, so the amount is only filled in when settling in £ */
 function payLink(k,h,amt,payer){
-  if(k==='monzo')return `https://monzo.me/${encodeURIComponent(h)}`+(S.cur==='£'?`/${(amt/100).toFixed(2)}?d=${encodeURIComponent(bankRef(payer))}`:'');
+  if(k==='monzo')return `https://monzo.me/${encodeURIComponent(h)}`+(sCc()==='£'?`/${(sAmt(amt)/100).toFixed(2)}?d=${encodeURIComponent(bankRef(payer))}`:'');
   return `https://${PAY_SITES[k]}/${encodeURIComponent(h)}`;
 }
 const payee=u=>u.ids.map(person).find(hasPay)||person(u.ids[0]);
@@ -621,7 +630,7 @@ function payLines(p,amt,payer){
 function remindText(f,to,amt){
   const p=payee(to),payer=payerOf(f),us=to.ids.length>1?'us':'me';
   const lines=payLines(p,amt,payer);
-  return `Hi ${uName(f)}, a reminder from ${S.name}: you owe ${us} ${money(amt)}.`+(lines.length?`\n\n${lines.join('\n')}`:'')+(syncOn()?`\n\n${tripLink()}`:'');
+  return `Hi ${uName(f)}, a reminder from ${S.name}: you owe ${us} ${smoney(amt)}.`+(lines.length?`\n\n${lines.join('\n')}`:'')+(syncOn()?`\n\n${tripLink()}`:'');
 }
 /* "Did you pay?" — remembered when you leave for a payment app, asked when you come back */
 let pendingPay=null;
@@ -634,7 +643,7 @@ function checkPending(){
   const sc=openScrim();
   sc.innerHTML=`<div class="sheet" role="dialog" aria-label="Did you pay?">
     <div class="sh"><button type="button" class="iconbtn" data-dismiss aria-label="Close">${ico('i-down')}</button><h3>Did you pay ${esc(pname(p.to))}?</h3></div>
-    <p class="askpay">${money(p.amt)} from ${esc(pname(p.from))} to ${esc(pname(p.to))}</p>
+    <p class="askpay">${smoney(p.amt)} from ${esc(pname(p.from))} to ${esc(pname(p.to))}</p>
     <div class="foot"><button class="btn" data-dismiss>Not yet</button><button class="btn primary" id="yesPaid">Yes, mark as paid</button></div>
   </div>`;
   $('#yesPaid').onclick=()=>{close();addPayment(p.from,p.to,p.amt)};
@@ -644,16 +653,17 @@ document.addEventListener('visibilitychange',checkPending);
 window.addEventListener('focus',checkPending);
 window.addEventListener('pageshow',e=>{if(e.persisted)checkPending()});
 function addPayment(from,to,amt){
-  const p={id:uid(),by:me()||null,type:'pay',desc:'Payment',amt,date:today(),paidBy:from,for:[to],cat:'other',u:now()};
+  const p={id:uid(),by:me()||null,type:'pay',desc:'Payment',amt,date:today(),paidBy:from,for:[to],cat:'other',...payFields(amt),u:now()};
+  if(!p.cc){delete p.cc;delete p.oamt;delete p.rate}fixRate();
   S.expenses.push(p);open?.add(p.date);save();render();
   toast(`Marked as paid to ${pname(to)}`,{label:'Undo',fn:()=>{p.del=true;p.u=now();save();render();toast('Payment removed')}});
 }
 function openPayTo(f,to,amt){
-  const p=payee(to),payer=payerOf(f),d=(p&&p.pay)||{},sterling=S.cur==='£';
+  const p=payee(to),payer=payerOf(f),d=(p&&p.pay)||{},sterling=sCc()==='£',sm=smoney(amt);
   const sc=openScrim();
   const copyBtn=(v,label)=>`<button type="button" class="copy" data-copy="${esc(v)}" aria-label="Copy ${label}">${ico('i-copy')}</button>`;
-  const hints={monzo:sterling?`Opens Monzo with ${money(amt)} filled in`:`Opens Monzo. Monzo pays in £, so enter the £ amount`,
-    revolut:`Opens Revolut. Enter ${money(amt)}`,starling:`Pay by UK debit card. Enter ${money(amt)}`};
+  const hints={monzo:sterling?`Opens Monzo with ${sm} filled in`:`Opens Monzo. Monzo pays in £, so enter the £ amount`,
+    revolut:`Opens Revolut. Enter ${sm}`,starling:`Pay by UK debit card. Enter ${sm}`};
   const opts=['monzo','revolut','starling'].filter(k=>d[k]).map(k=>`<a class="payopt" data-go href="${esc(payLink(k,d[k],amt,payer))}" target="_blank" rel="noopener"><span><b>${PAY_NAMES[k]}</b><small>${hints[k]}</small></span>${ico('i-chev')}</a>`).join('');
   const bank=d.sort&&d.acct?`<div class="bankbox"><b>Bank transfer</b>
       ${d.bname?`<div class="copyrow"><span><small>Name</small>${esc(d.bname)}</span>${copyBtn(d.bname,'name')}</div>`:''}
@@ -661,10 +671,10 @@ function openPayTo(f,to,amt){
       <div class="copyrow"><span><small>Account</small>${esc(d.acct)}</span>${copyBtn(d.acct,'account number')}</div>
       <div class="copyrow"><span><small>Reference</small>${esc(bankRef(payer))}</span>${copyBtn(bankRef(payer),'reference')}</div></div>`:'';
   const none=!opts&&!bank;
-  const ask=`Hi ${first(p.name)}, how should I pay you the ${money(amt)} for ${S.name}? You can add Monzo, Revolut, Starling or bank details in the app under Settings, Payment details.`;
+  const ask=`Hi ${first(p.name)}, how should I pay you the ${sm} for ${S.name}? You can add Monzo, Revolut, Starling or bank details in the app under Settings, Payment details.`;
   sc.innerHTML=`<div class="sheet" role="dialog" aria-label="Pay ${esc(p.name)}">
     <div class="sh"><button type="button" class="iconbtn" data-dismiss aria-label="Close">${ico('i-down')}</button><h3>Pay ${esc(p.name)}</h3></div>
-    <div class="payamt"><span>${money(amt)}</span>${copyBtn((amt/100).toFixed(2),'amount')}</div>
+    <div class="payamt"><span>${sm}</span>${copyBtn((sAmt(amt)/100).toFixed(2),'amount')}</div>${sx()?`<p class="payrate">${rateTxt()} · ${money(amt)}</p>`:''}
     ${none?`<p class="askpay">${esc(first(p.name))} hasn't added payment details yet.</p>
       <div class="invite"><button class="btn primary" data-paydetails="${p.id}">Add their details</button><a class="btn wa" href="https://wa.me/?text=${encodeURIComponent(ask)}" target="_blank" rel="noopener">${ico('i-chat')}Ask</a></div>`
       :`<div class="payopts">${opts}</div>${bank}`}
@@ -864,6 +874,31 @@ function initials(id){
 const av=(id,cls='')=>{const p=person(id),t=initials(id);return `<span class="av ${cls}${t.length>1?' two':''}" style="background:${COLORS[p.c%COLORS.length]}" title="${esc(p.name)}">${esc(t)}</span>`};
 const stack=(ids,cls='sm')=>`<span class="stack">${ids.slice(0,5).map(id=>av(id,cls)).join('')}${ids.length>5?`<span class="av ${cls}" style="background:${CAT_COL.other}">+${ids.length-5}</span>`:''}</span>`;
 const money=p=>{const n=Math.abs(p)/100;return (p<0?'−':'')+S.cur+n.toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2})};
+/* ---- Settle-up currency: expenses stay in the trip currency; Settle up can show and pay in another, e.g. £ for a € trip.
+   S.sx = {cc, rate (cc per 1 trip unit), mode:'live'|'manual', date (rate's date), day (when fetched), fixed (date of first payment)}.
+   A live rate refreshes daily until the first payment is recorded, then stays fixed so everyone pays at the same rate. */
+const ISO={'€':'EUR','£':'GBP','$':'USD','CHF':'CHF','zł':'PLN','Kč':'CZK','Ft':'HUF','¥':'JPY','₺':'TRY'};
+const sx=()=>{const x=S.sx;return x&&x.cc&&x.cc!==S.cur&&x.rate>0?x:null};
+const sCc=()=>sx()?.cc||S.cur;
+const sAmt=m=>{const x=sx();return x?Math.round(m*x.rate):m};                 /* trip cents → settle cents */
+const fromS=p=>{const x=sx();return x?Math.round(p/x.rate):p};               /* settle cents → trip cents */
+const smoney=m=>{const p=sAmt(m),n=Math.abs(p)/100;return (p<0?'−':'')+sCc()+n.toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2})};
+const rateTxt=(x=sx())=>x?`${S.cur}1 = ${x.cc}${(+x.rate).toFixed(4).replace(/0+$/,'').replace(/\.$/,'')}`:'';
+const shortDate=d=>new Date(d+'T12:00').toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+async function fetchRate(cc){
+  const a=ISO[S.cur],b=ISO[cc];if(!a||!b||!syncAvail)return null;
+  try{const r=await fetch(`/api/rate/${a}/${b}`,{cache:'no-store'});if(!r.ok)return null;const j=await r.json();return j&&j.rate>0?j:null}catch(e){return null}
+}
+let rateBusy=false;
+async function refreshRate(){
+  const x=sx();if(!x||x.mode!=='live'||x.fixed||x.day===today()||rateBusy)return;
+  rateBusy=true;const j=await fetchRate(x.cc);rateBusy=false;
+  if(j&&S.sx===x&&!x.fixed&&x.mode==='live'){x.rate=j.rate;x.date=j.date;x.day=today();S.sxu=now();save();render()}
+}
+/* the first payment at a live rate fixes it */
+function fixRate(){const x=sx();if(x&&x.mode==='live'&&!x.fixed){x.fixed=today();S.sxu=now()}}
+/* a payment recorded in the settle currency keeps the exact trip amount, plus what was actually sent */
+function payFields(amt,sent){const x=sx();return x?{cc:x.cc,oamt:sent??sAmt(amt),rate:+(1/x.rate).toFixed(6)}:{cc:null,oamt:null,rate:null}}
 /* Amounts: accepts 12.50, 12,50, 1.234,56, 1,234.56, 1 200, €7. The last . or , is the decimal point only if 1–2 digits follow it */
 function toPence(v){
   let s=String(v).replace(/[^\d.,]/g,'');if(!/\d/.test(s))return NaN;
@@ -924,7 +959,7 @@ function settle(nets){
 function summary(){
   const {t}=plan(),total=expenses().reduce((s,e)=>s+e.amt,0);
   let s=`*${S.name}* · ${money(total)} total\n\n`;
-  s+=t.length?t.map(([f,to,m])=>`${uName(f)} → ${uName(to)}: *${money(m)}*`).join('\n'):'Everyone is square ✅';
+  s+=t.length?t.map(([f,to,m])=>`${uName(f)} → ${uName(to)}: *${smoney(m)}*`).join('\n')+(sx()?`\n_${rateTxt()}_`:''):'Everyone is square ✅';
   if(syncOn())s+=`\n\n${tripLink()}`;
   return s;
 }
@@ -971,9 +1006,9 @@ function meCard(){
   const out=t.filter(x=>mine(x[0])),inn=t.filter(x=>mine(x[1]));
   const owe=out.reduce((s,x)=>s+x[2],0),owed=inn.reduce((s,x)=>s+x[2],0);
   /* one summary line (tap to expand/collapse), then each balance in smaller grey text with the amount in colour */
-  const head=owe?`${who} owe <b class="neg">${money(owe)}</b>`:owed?`${are} owed <b class="pos">${money(owed)}</b>`:`${are} all square`;
-  const lines=[...out.map(x=>`${who} owe ${esc(uName(x[1]))} <b class="neg">${money(x[2])}</b>`),
-               ...inn.map(x=>`${esc(uName(x[0]))} owe${x[0].ids.length>1?'':'s'} ${obj} <b class="pos">${money(x[2])}</b>`)];
+  const head=owe?`${who} owe <b class="neg">${smoney(owe)}</b>`:owed?`${are} owed <b class="pos">${smoney(owed)}</b>`:`${are} all square`;
+  const lines=[...out.map(x=>`${who} owe ${esc(uName(x[1]))} <b class="neg">${smoney(x[2])}</b>`),
+               ...inn.map(x=>`${esc(uName(x[0]))} owe${x[0].ids.length>1?'':'s'} ${obj} <b class="pos">${smoney(x[2])}</b>`)];
   const shown=lines.slice(0,3),more=lines.length-shown.length,openMe=prefs.meOpen!==false&&lines.length>0;
   return `<div class="mecard">
     <button class="mehead2" ${lines.length?`data-metoggle aria-expanded="${openMe}"`:'data-goto="bal"'}><span>${head}</span>${lines.length?ico('i-chev','i mechev'):''}</button>
@@ -996,7 +1031,7 @@ function rExp(){
     const de=E.filter(e=>e.date===d),isOpen=open.has(d);
     h+=`<div class="day${isOpen?' open':''}"><button class="dayh" data-day="${d}" aria-expanded="${isOpen}"><span class="d">${fmtDate(d)}</span><span class="s">${money(de.filter(e=>!isPay(e)).reduce((s,e)=>s+e.amt,0))}</span>${ico('i-chev')}</button>`;
     if(isOpen)h+='<ul class="items">'+de.map(e=>isPay(e)
-      ?`<li><button class="row" data-pay="${e.id}"><span class="ic" style="background:${PAY_COL}">${ico('i-pay')}</span><span class="main"><div class="t">${esc(pname(e.paidBy))} paid ${esc(pname(e.for[0]))}</div><div class="who">${av(e.paidBy,'sm')}${ico('i-arrow')}${av(e.for[0],'sm')}<span>Payment</span></div></span><span class="rt"><span class="amt">${money(e.amt)}</span>${myLine(e)}</span></button></li>`
+      ?`<li><button class="row" data-pay="${e.id}"><span class="ic" style="background:${PAY_COL}">${ico('i-pay')}</span><span class="main"><div class="t">${esc(pname(e.paidBy))} paid ${esc(pname(e.for[0]))}</div><div class="who">${av(e.paidBy,'sm')}${ico('i-arrow')}${av(e.for[0],'sm')}<span>Payment</span></div></span><span class="rt"><span class="amt">${e.cc?fmtCc(e.oamt,e.cc):money(e.amt)}</span>${myLine(e)}</span></button></li>`
       :`<li><button class="row" data-edit="${e.id}"><span class="ic" style="background:${CAT_COL[e.cat]}">${ico('c-'+e.cat)}</span><span class="main"><div class="t">${esc(e.desc)}</div><div class="who"><span>${e.paidBy===me()?'You':esc(first(pname(e.paidBy)))} paid</span><span class="sep">·</span>${e.for.length===everyone?'<span>everyone</span>':stack(e.for)}${e.cc?`<span class="orig">${fmtCc(e.oamt,e.cc)}</span>`:''}${e.photo?ico('i-cam','i tiny'):''}</div></span><span class="rt"><span class="amt">${money(e.amt)}</span>${myLine(e)}</span></button></li>`).join('')+'</ul>';
     h+='</div>';
   });
@@ -1018,10 +1053,12 @@ function rBal(){
   /* couples (or long names) need room: names on the first line, amount + button on the second */
   const roomy=t.some(([f,to])=>f.ids.length>1||to.ids.length>1||(fn(f)+fn(to)).length>10);
   const trow=([f,to,m],i)=>roomy
-    ?`<div class="row srow two"><span class="flow">${uAv(f,'sm')}<span class="nm">${esc(fn(f))}</span>${ico('i-arrow')}${uAv(to,'sm')}<span class="nm">${esc(fn(to))}</span></span><span class="line2"><span class="amt">${money(m)}</span><span class="acts">${rowActs(f,to,m,i)}</span></span></div>`
-    :`<div class="row srow"><span class="flow">${uAv(f,'sm')}<span class="nm">${esc(fn(f))}</span>${ico('i-arrow')}${uAv(to,'sm')}<span class="nm">${esc(fn(to))}</span></span><span class="amt">${money(m)}</span><span class="acts">${rowActs(f,to,m,i)}</span></div>`;
+    ?`<div class="row srow two"><span class="flow">${uAv(f,'sm')}<span class="nm">${esc(fn(f))}</span>${ico('i-arrow')}${uAv(to,'sm')}<span class="nm">${esc(fn(to))}</span></span><span class="line2"><span class="amt">${smoney(m)}</span><span class="acts">${rowActs(f,to,m,i)}</span></span></div>`
+    :`<div class="row srow"><span class="flow">${uAv(f,'sm')}<span class="nm">${esc(fn(f))}</span>${ico('i-arrow')}${uAv(to,'sm')}<span class="nm">${esc(fn(to))}</span></span><span class="amt">${smoney(m)}</span><span class="acts">${rowActs(f,to,m,i)}</span></div>`;
   const mu=me(),mineI=t.map((x,i)=>i).filter(i=>!mu||t[i][0].ids.includes(mu)||t[i][1].ids.includes(mu)),otherI=t.map((x,i)=>i).filter(i=>!mineI.includes(i));
-  h+=`<div class="h2row"><h2>Who pays who</h2>${t.length?`<span class="h2acts"><button class="iconbtn sm" id="copy" aria-label="Copy summary">${ico('i-copy')}</button><a class="iconbtn sm wa" href="https://wa.me/?text=${encodeURIComponent(summary())}" target="_blank" rel="noopener" aria-label="Share on WhatsApp">${ico('i-chat')}</a></span>`:''}</div><div class="card">`;
+  refreshRate();
+  const x=sx(),sxBar=`<button class="sxbar" id="sxBtn">${x?`<span>Amounts in <b>${esc(x.cc)}</b> · ${esc(rateTxt(x))}</span><small>${x.mode==='manual'?'your rate':x.fixed?'fixed '+shortDate(x.fixed):'live · '+shortDate(x.date||today())}</small>`:`<span>Amounts in <b>${esc(S.cur)}</b></span><small>Settle in another currency</small>`}${ico('i-chev','i rowchev')}</button>`;
+  h+=`<div class="h2row"><h2>Who pays who</h2>${t.length?`<span class="h2acts"><button class="iconbtn sm" id="copy" aria-label="Copy summary">${ico('i-copy')}</button><a class="iconbtn sm wa" href="https://wa.me/?text=${encodeURIComponent(summary())}" target="_blank" rel="noopener" aria-label="Share on WhatsApp">${ico('i-chat')}</a></span>`:''}</div>${t.length||x?sxBar:''}<div class="card">`;
   if(!t.length)h+='<div class="square">Everyone is square</div>';
   else{
     h+=mineI.map(i=>trow(t[i],i)).join('')||'<div class="square sm">Nothing for you to pay or receive</div>';
@@ -1036,12 +1073,12 @@ function rBal(){
     h+=`<div class="nudge"><span>Add your payment details so the group can pay you in one tap.</span><button class="btn primary" data-paydetails="${m0}">Add</button></div>`;
   /* recorded payments: tap the ✓ to mark as not paid (Undo puts it back) */
   const pays=expenses().filter(isPay);
-  if(pays.length)h+='<h2>Paid</h2><div class="card">'+pays.map(e=>`<div class="row"><span class="flow">${av(e.paidBy)}<span>${esc(pname(e.paidBy))}</span>${ico('i-arrow')}${av(e.for[0])}<span>${esc(pname(e.for[0]))}</span></span><span class="rt"><span class="amt">${money(e.amt)}</span><button class="paidtoggle" data-unpay="${e.id}" aria-pressed="true" aria-label="Paid. Tap to mark as not paid">${ico('i-check','i tiny')}Paid</button></span></div>`).join('')+'</div>';
+  if(pays.length)h+='<h2>Paid</h2><div class="card">'+pays.map(e=>`<div class="row"><span class="flow">${av(e.paidBy)}<span>${esc(pname(e.paidBy))}</span>${ico('i-arrow')}${av(e.for[0])}<span>${esc(pname(e.for[0]))}</span></span><span class="rt"><span class="amt">${e.cc?fmtCc(e.oamt,e.cc):money(e.amt)}</span><button class="paidtoggle" data-unpay="${e.id}" aria-pressed="true" aria-label="Paid. Tap to mark as not paid">${ico('i-check','i tiny')}Paid</button></span></div>`).join('')+'</div>';
   const bo=!!prefs.balOpen;
   h+=`<button class="foldh" data-fold="balOpen" aria-expanded="${bo}"><h2>Balances</h2>${ico('i-chev','i fchev')}</button>`;
   if(bo){h+='<div class="card">';
     nets.forEach(({u,paid,n})=>{
-      h+=`<div class="row">${uAv(u)}<span class="main"><div class="t">${esc(uName(u))}</div><div class="who">Paid ${money(paid)}</div></span><span class="amt ${n>0?'pos':n<0?'neg':''}">${n>0?'+':''}${money(n)}</span></div>`});
+      h+=`<div class="row">${uAv(u)}<span class="main"><div class="t">${esc(uName(u))}</div><div class="who">Paid ${money(paid)}</div></span><span class="amt ${n>0?'pos':n<0?'neg':''}">${n>0?'+':''}${smoney(n)}</span></div>`});
     h+='</div>';}
   /* trip summary: spend by category and by person (payments excluded) */
   const sp=spend();
@@ -1130,6 +1167,7 @@ document.addEventListener('click',e=>{
   if(rm){const id=rm.dataset.rm,n=expenses().filter(x=>x.paidBy===id||x.for.includes(id)).length;
     if(n){$('#pmsg').textContent=`${pname(id)} is in ${n} expense${n>1?'s':''}. Remove those first.`;return}
     const p=S.people.find(x=>x.id===id),q=partner(id);if(q){const o=person(q);delete o.pair;delete o.joint;o.u=now()}delete p.pair;delete p.joint;p.del=true;p.u=now();save();render();return}
+  if(e.target.closest('#sxBtn'))return openSettleCur();
   if(e.target.closest('#copy'))copy(summary(),'Copied');
   if(e.target.closest('#copyLink'))copy(tripLink(),'Link copied');
 });
@@ -1306,6 +1344,57 @@ function openDupReview(){
 }
 const lastRate=cc=>{const e=S.expenses.filter(x=>!x.del&&x.cc===cc&&x.rate).sort((a,b)=>b.u-a.u)[0];return e?e.rate:((prefs.rates||{})[cc]||'')};
 
+/* settle-up currency sheet: pick a currency; the live rate is filled in, or type your own */
+function openSettleCur(){
+  const cur=sx(),sc=openScrim(),list=[S.cur,...CCS.filter(c=>c!==S.cur)];
+  const st=cur?{...cur}:{cc:S.cur,rate:null,mode:'live'};
+  const live=c=>!!(ISO[S.cur]&&ISO[c]);
+  sc.innerHTML=`<form class="sheet" id="sxform" role="dialog" aria-label="Settle up currency">
+    <div class="sh"><button type="button" class="iconbtn" data-dismiss aria-label="Close">${ico('i-down')}</button><h3>Settle up in</h3></div>
+    <p class="rateinfo" style="margin-top:0">Expenses stay in ${esc(S.cur)}. Who pays who, payment links and reminders use the currency you pick.</p>
+    <div class="ccpick" id="ccPick"></div>
+    <div id="sxRateBox" hidden><div class="lbl"><span>Rate</span></div>
+      <div class="ratebox"><b id="sxPre"></b><input id="sxrate" class="field" inputmode="decimal" autocomplete="off" aria-label="Exchange rate"></div>
+      <p class="rateinfo" id="sxInfo"></p>
+      <button type="button" class="btn" id="sxLive" hidden>Use today's rate</button></div>
+    <p class="msg" id="sxmsg"></p>
+    <div class="foot"><button class="btn primary">Save</button></div>
+  </form>`;
+  const draw=(msg)=>{
+    const other=st.cc!==S.cur;
+    $('#ccPick').innerHTML=list.map(c=>`<button type="button" class="ccopt" data-sxcc="${esc(c)}" aria-pressed="${st.cc===c}">${esc(c)}</button>`).join('');
+    $('#sxRateBox').hidden=!other;if(!other)return;
+    $('#sxPre').textContent=`${S.cur}1 = ${st.cc}`;
+    if(document.activeElement!==$('#sxrate'))$('#sxrate').value=st.rate>0?String(+(+st.rate).toFixed(6)):'';
+    $('#sxInfo').textContent=msg||(!live(st.cc)?'There\'s no live rate for this currency. Enter the rate yourself.'
+      :st.mode==='manual'?'Your rate. It stays as you set it.'
+      :st.fixed?`Live rate, fixed on ${shortDate(st.fixed)} when the first payment was recorded.`
+      :st.rate?`Live rate from Frankfurter (central-bank rates)${st.date?', '+shortDate(st.date):''}. Updates daily until the first payment is recorded, then stays fixed.`:'');
+    $('#sxLive').hidden=!(live(st.cc)&&(st.mode==='manual'||st.fixed||!st.rate));
+  };
+  const getLive=async()=>{
+    draw('Getting today\'s rate…');
+    const j=await fetchRate(st.cc);if(!$('#sxform'))return;
+    if(j){Object.assign(st,{rate:j.rate,mode:'live',date:j.date,day:today()});delete st.fixed;draw()}
+    else{st.mode='manual';if(!(st.rate>0)&&prefs.rates&&prefs.rates[st.cc])st.rate=+(1/prefs.rates[st.cc]).toFixed(4);
+      draw('Couldn\'t get today\'s rate (no signal?). Enter it yourself, or try again later.')}
+  };
+  draw();
+  sc.onclick=e=>{
+    if(e.target===sc)return close();
+    const b=e.target.closest('[data-sxcc]');
+    if(b){const c=b.dataset.sxcc;if(c===st.cc)return;st.cc=c;st.rate=null;delete st.fixed;$('#sxmsg').textContent='';
+      if(c!==S.cur&&live(c))getLive();else{st.mode=c===S.cur?'live':'manual';draw()}return}
+    if(e.target.closest('#sxLive'))getLive();
+  };
+  $('#sxrate').oninput=e=>{st.rate=parseFloat(String(e.target.value).replace(',','.'))||null;st.mode='manual';delete st.fixed;draw()};
+  $('#sxform').onsubmit=e=>{e.preventDefault();
+    if(st.cc===S.cur){if(S.sx){S.sx=null;S.sxu=now();save()}close();render();return toast(`Settling up in ${S.cur}`)}
+    if(!(st.rate>0))return $('#sxmsg').textContent='Enter the rate.';
+    const nx={cc:st.cc,rate:+st.rate,mode:st.mode,date:st.date||today(),day:st.day||today()};if(st.fixed)nx.fixed=st.fixed;
+    S.sx=nx;S.sxu=now();save();close();render();toast(`Settling up in ${st.cc} at ${rateTxt()}`);
+  };
+}
 /* ---- Payments: recorded as an expense of type "pay" (from paid, to's share = amount) so balances just work ---- */
 function openPay(ex,pre){
   const P=people(),isNew=!ex;
@@ -1318,7 +1407,8 @@ function openPay(ex,pre){
   };
   sc.innerHTML=`<form class="sheet" id="pform2" role="dialog" aria-label="${isNew?'Record':'Edit'} payment">
     <div class="sh"><button type="button" class="iconbtn" data-dismiss aria-label="Close">${ico('i-down')}</button><h3>${isNew?'Record payment':'Edit payment'}</h3></div>
-    <input id="pamt" class="field big" inputmode="decimal" placeholder="${esc(S.cur)}0.00" value="${ex?(ex.amt/100).toFixed(2):pre?(pre.amt/100).toFixed(2):''}" autocomplete="off" aria-label="Amount">
+    <input id="pamt" class="field big" inputmode="decimal" placeholder="${esc(sCc())}0.00" value="${ex?((ex.cc&&ex.cc===sCc()?ex.oamt:sAmt(ex.amt))/100).toFixed(2):pre?(sAmt(pre.amt)/100).toFixed(2):''}" autocomplete="off" aria-label="Amount">
+    ${sx()?`<p class="payrate">In ${esc(sCc())} at ${esc(rateTxt())}</p>`:''}
     <div class="daterow"><label for="pdate">Date</label><input id="pdate" type="date" value="${ex?.date||today()}"></div>
     <div class="lbl"><span>From<em id="fromName"></em></span></div><div id="fromChips"></div>
     <div class="lbl"><span>To<em id="toName"></em></span></div><div id="toChips"></div>
@@ -1337,7 +1427,10 @@ function openPay(ex,pre){
     const a=toPence($('#pamt').value);
     if(!(a>0))return $('#pmsg2').textContent='Enter an amount.';
     if(f.from===f.to)return $('#pmsg2').textContent='Pick two different people.';
-    const rec={type:'pay',desc:'Payment',amt:a,date:$('#pdate').value||today(),paidBy:f.from,for:[f.to],cat:'other',u:now()};
+    /* typed in the settle currency; the suggested amount maps back to its exact trip amount so the balance clears */
+    const tripAmt=pre&&a===sAmt(pre.amt)?pre.amt:ex&&ex.cc===sCc()&&a===ex.oamt?ex.amt:fromS(a);
+    const rec={type:'pay',desc:'Payment',amt:tripAmt,date:$('#pdate').value||today(),paidBy:f.from,for:[f.to],cat:'other',...payFields(tripAmt,sx()?a:null),u:now()};
+    if(isNew)fixRate();
     const p=isNew?{id:uid(),by:me()||null,...rec}:Object.assign(ex,rec);if(isNew)S.expenses.push(p);
     open?.add(rec.date);save();close();render();
     toast(isNew?'Payment recorded':'Saved',isNew?{label:'Undo',fn:()=>{p.del=true;p.u=now();save();render();toast('Payment removed')}}:null);

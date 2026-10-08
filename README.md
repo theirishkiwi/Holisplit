@@ -6,7 +6,7 @@ wrangler.jsonc     config: static assets + KV namespace "TRIPS"
 
 ## Tests
 npm install
-npm test      (89 tests: split maths, settling, couples, joint accounts, payments, currencies, amount entry, dates, worker sync, photos, link reset, encryption, delete and restore, closing screens, paid toggle, payment links, permanent delete, layout, receipt scanning, duplicate checks, offline)
+npm test      (99 tests: split maths, settling, couples, joint accounts, payments, currencies, amount entry, dates, worker sync, photos, link reset, encryption, delete and restore, closing screens, paid toggle, payment links, permanent delete, layout, receipt scanning, duplicate checks, offline, settling in another currency)
 
 ## Deploy (one time)
 1. npx wrangler login
@@ -36,6 +36,14 @@ If the couple shares money, e.g. a joint Monzo account, switch on **Joint accoun
 - Each expense counts the two of you together, whoever paid. If Leanne pays €200 for 8 people, Chris sees "you're owed €150.00" (the other six people's shares), not "you owe €25.00".
 - You always settle as one, even when Settle up is set to Everyone, so there's never a payment between partners.
 - It's saved on both people and syncs to everyone. Unpairing turns it off.
+
+## Settling up in another currency
+Expenses stay in the trip currency, but Settle up can show and pay in another. For example, a € trip can be settled in £ so Monzo links fill in the amount. Tap **Amounts in €** on Settle up and pick a currency.
+- **Live rate:** filled in from [Frankfurter](https://frankfurter.dev/) (free, no key, central-bank rates) via `/api/rate/EUR/GBP`. The server keeps each day's rate, so it's fetched once a day at most, and it falls back to the last known rate if Frankfurter is down.
+- **Updating:** a live rate updates daily until the first payment is recorded, then stays fixed so everyone pays at the same rate.
+- **Your own rate:** type a rate to use, e.g. the one your bank gave you. It's never replaced.
+- **Recording payments:** a payment is recorded with what was sent (e.g. £25.84) and the exact trip amount (€30.00), so balances clear to the cent.
+- **Sharing:** the currency and rate are saved on the trip and sync to everyone.
 
 ## Paying
 Each person can add Monzo, Revolut or Starling Settle Up names and UK bank details

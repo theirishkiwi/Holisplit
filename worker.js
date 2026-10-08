@@ -139,12 +139,38 @@ async function handleScan(req, env, trip) {
   return json({ ok: true, ...found, usage: (r && r.usage) || null });
 }
 
+// ---- Exchange rates for settling up in another currency ----
+// Daily reference rates from Frankfurter (free, no key, central-bank data). Kept in KV for the day, so each
+// currency pair is fetched at most once a day however many phones ask; if Frankfurter is down, the last rate is used.
+const RATE_API = (a, b) => `https://api.frankfurter.dev/v2/rate/${a.toLowerCase()}/${b.toLowerCase()}`;
+async function handleRate(env, a, b) {
+  if (!/^[A-Z]{3}$/.test(a) || !/^[A-Z]{3}$/.test(b) || a === b) return json({ error: 'bad currency' }, 400);
+  const day = new Date().toISOString().slice(0, 10), key = `rate:${a}:${b}:${day}`, last = `rate:${a}:${b}:last`;
+  const hit = await env.TRIPS.get(key);
+  if (hit) return json({ ok: true, ...JSON.parse(hit) });
+  try {
+    const r = await fetch(RATE_API(a, b), { signal: AbortSignal.timeout(5000), cf: { cacheTtl: 3600 } });
+    if (!r.ok) throw new Error(r.status);
+    const j = await r.json();
+    if (!(j && j.rate > 0 && j.rate < 1e6)) throw new Error('bad rate');
+    const out = JSON.stringify({ rate: j.rate, date: String(j.date || day).slice(0, 10), source: 'Frankfurter' });
+    await env.TRIPS.put(key, out, { expirationTtl: 2 * 86400 });
+    await env.TRIPS.put(last, out);
+    return json({ ok: true, ...JSON.parse(out) });
+  } catch (e) {
+    const old = await env.TRIPS.get(last);
+    if (old) return json({ ok: true, stale: true, ...JSON.parse(old) });
+    return json({ error: 'rate unavailable' }, 503);
+  }
+}
+
 // Keep only the fields the app uses
 function clean(t) {
-  const { v, id, name, cur, nu, people, expenses, u, prev, del, delBy, du } = t;
+  const { v, id, name, cur, nu, people, expenses, u, prev, del, delBy, du, sx, sxu } = t;
   const out = { v, id, name, cur, nu: nu || 0, people: people || [], expenses: expenses || [], u: u || 0 };
   if (typeof prev === 'string') out.prev = prev;
   if (du) { out.del = del || null; out.delBy = delBy || null; out.du = du; }
+  if (sxu) { out.sx = sx && typeof sx === 'object' ? sx : null; out.sxu = sxu; }
   return out;
 }
 function valid(t) {
@@ -163,6 +189,7 @@ function merge(base, inc) {
   }
   if ((inc.nu || 0) > out.nu) { out.name = inc.name; out.cur = inc.cur; out.nu = inc.nu; }
   if ((inc.du || 0) > (out.du || 0)) { out.del = inc.del || null; out.delBy = inc.delBy || null; out.du = inc.du; }
+  if ((inc.sxu || 0) > (out.sxu || 0)) { out.sx = inc.sx && typeof inc.sx === 'object' ? inc.sx : null; out.sxu = inc.sxu; }
   out.u = Math.max(out.u, inc.u || 0);
   return out;
 }
@@ -171,6 +198,8 @@ export default {
   async fetch(req, env) {
     const url = new URL(req.url);
     if (url.pathname === '/api/ping') return json({ ok: true, scan: !!env.AI });
+    const rm = url.pathname.match(/^\/api\/rate\/([A-Za-z]{3})\/([A-Za-z]{3})$/);
+    if (rm) return handleRate(env, rm[1].toUpperCase(), rm[2].toUpperCase());
     const sm = url.pathname.match(/^\/api\/scan\/([^/]+)$/);
     if (sm) return handleScan(req, env, sm[1]);
 
