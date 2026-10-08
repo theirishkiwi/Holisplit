@@ -1071,7 +1071,7 @@ function rBal(){
     :`<div class="row srow"><span class="flow">${uAv(f,'sm')}<span class="nm">${esc(fn(f))}</span>${ico('i-arrow')}${uAv(to,'sm')}<span class="nm">${esc(fn(to))}</span></span><span class="amt">${smoney(m)}</span><span class="acts">${rowActs(f,to,m,i)}</span></div>`;
   const mu=me(),mineI=t.map((x,i)=>i).filter(i=>!mu||t[i][0].ids.includes(mu)||t[i][1].ids.includes(mu)),otherI=t.map((x,i)=>i).filter(i=>!mineI.includes(i));
   refreshRate();
-  const x=sx(),sxBar=`<button class="sxbar" id="sxBtn">${x?`<span>Amounts in <b>${esc(x.cc)}</b> · ${esc(rateTxt(x))}</span><small>${x.mode==='manual'?'your rate':x.fixed?'fixed '+shortDate(x.fixed):'live · '+shortDate(x.date||today())}</small>`:`<span>Amounts in <b>${esc(S.cur)}</b></span><small>Settle in another currency</small>`}${ico('i-chev','i rowchev')}</button>`;
+  const x=sx(),sxBar=`<button class="sxbar" id="sxBtn">${x?`<span>Settle in <b>${esc(x.cc)}</b> · ${esc(rateTxt(x))}</span><small>${x.mode==='manual'?'your rate':x.fixed?'fixed '+shortDate(x.fixed):'live · '+shortDate(x.date||today())}</small>`:`<span>Settle in <b>${esc(S.cur)}</b></span><small>Use another currency</small>`}${ico('i-chev','i rowchev')}</button>`;
   h+=`<div class="h2row"><h2>Who pays who</h2>${t.length?`<span class="h2acts"><button class="iconbtn sm" id="copy" aria-label="Copy summary">${ico('i-copy')}</button><a class="iconbtn sm wa" href="https://wa.me/?text=${encodeURIComponent(summary())}" target="_blank" rel="noopener" aria-label="Share on WhatsApp">${ico('i-chat')}</a></span>`:''}</div>${t.length||x?sxBar:''}<div class="card">`;
   if(!t.length)h+='<div class="square">Everyone is square</div>';
   else{
@@ -1614,7 +1614,7 @@ const REPO='https://github.com/theirishkiwi/Holisplit';
 /* newest first; the first entry's head is what returning users see in the banner after an update */
 const NEWS=[
   {d:'2026-10-08',head:'Settle up in £, a clear offline banner, and a help guide',items:[
-    'Settle up in £ (or another currency) at today\'s rate. Monzo links fill in the £ amount. Tap “Amounts in €” on Settle up.',
+    'Settle up in £ (or another currency) at today\'s rate. Monzo links fill in the £ amount. Tap “Settle in €” on Settle up.',
     'A banner tells you when you\'re offline. You can still add expenses, and they sync as soon as you\'re back.',
     'Help guide and What\'s new, in Settings.']},
   {d:'2026-10-07',head:'Joint accounts for couples',items:[
@@ -1646,7 +1646,7 @@ const HELP=[
     '<b>Settle up</b> shows the fewest payments that make everyone square.',
     '<b>Pay</b> opens Monzo, Revolut or Starling, or shows bank details. Add yours in Settings → Payment details.',
     'Owed money? <b>Remind</b> sends a WhatsApp message. <b>Paid</b> records a payment, with Undo.',
-    'Tap <b>Amounts in €</b> to settle in another currency, e.g. £ at today\'s rate. The rate is fixed when the first payment is recorded.']],
+    'Tap <b>Settle in €</b> at the top of Who pays who to use another currency, e.g. £ at today\'s rate. The rate is fixed when the first payment is recorded.']],
   ['i-cloudoff','Offline',[
     'Everything works without signal. Changes are saved on your phone and sync when you\'re back online.',
     'A banner shows when you\'re offline. Tap <b>Retry</b> to try again straight away.']],
