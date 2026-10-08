@@ -14,7 +14,7 @@ function trip() {
     [['c','Chris'],['a','Ashleigh'],['s','Sarah b.'],['l','Allan'],['j','Jo']].forEach(([id,n],i)=>S.people.push({id,name:n,c:i,u:1}));
     const all=['c','a','s','l','j'];let n=0;const E=(d,desc,amt,by,f=all)=>S.expenses.push({id:'e'+(n++),desc,amt,date:d,paidBy:by,for:f,cat:'food',u:n});
     E('2026-10-03','Pizza',18500,'s');E('2026-10-04','Lunch',13000,'l');E('2026-10-05','Gelato',2400,'j');E('2026-10-06','Coffee',1400,'c',['c','a']);
-    prefs.me={[S.id]:'c'};prefs.couples=false;prefs.othersOpen=false;prefs.balOpen=false;tab='exp';save();open=new Set(['2026-10-06']);render()`);
+    prefs.me={[S.id]:'c'};prefs.othersOpen=false;prefs.balOpen=false;tab='exp';save();open=new Set(['2026-10-06']);render()`);
 }
 
 test('trip summary under the title: date range and people', () => {
@@ -101,15 +101,21 @@ test('Settle up rows: couples get two lines (full names, then amount + button); 
   P.run(`S=blank();S.cur='€';[['c','Chris'],['l','Lou'],['r','Rob'],['a','Ashleigh']].forEach(([id,n],i)=>S.people.push({id,name:n,c:i,u:1}));
     person('c').pair='l';person('l').pair='c';person('r').pair='a';person('a').pair='r';
     S.expenses.push({id:'x',desc:'Villa',amt:40000,date:'2026-10-01',paidBy:'r',for:['c','l','r','a'],cat:'stay',u:1});
-    prefs.me={[S.id]:'c'};prefs.couples=true;tab='bal';save();render()`);
+    prefs.me={[S.id]:'c'};tab='bal';save();render()`);
   const row = $('.srow');
   assert.ok(row.classList.contains('two'), 'couple rows use two lines');
-  assert.deepEqual([...row.querySelectorAll('.nm')].map(n => n.textContent), ['You & Lou', 'Rob & Ashleigh'], 'full names, not cut down');
+  assert.deepEqual([...row.querySelectorAll('.nm')].map(n => n.textContent), ['You & Lou*', 'Rob & Ashleigh*'], 'full names, not cut down; couples marked *');
+  assert.match($('.cnote').textContent, /\* Couples settle up as one\. Want to settle separately\? Unpair them in Group/);
+  assert.equal($('.seg'), null, 'no Couples / Everyone switch');
+  P.run(`document.querySelector('.cnote [data-goto]').click()`);
+  assert.equal(P.run('tab'), 'ppl', 'the note takes you to Group');
+  P.run(`tab='bal';render()`);
   assert.ok(row.querySelector('.line2 .amt') && row.querySelector('.line2 .acts'), 'amount and button on the second line');
   P.run(`S=blank();S.cur='€';[['c','Chris'],['s','Sue']].forEach(([id,n],i)=>S.people.push({id,name:n,c:i,u:1}));
     S.expenses.push({id:'y',desc:'Taxi',amt:2000,date:'2026-10-01',paidBy:'s',for:['c','s'],cat:'transport',u:1});
     prefs.me={[S.id]:'c'};tab='bal';save();render()`);
   assert.ok(!$('.srow').classList.contains('two'), '"You → Sue" fits on one line');
+  assert.equal($('.cnote'), null, 'no couples, no note');
 });
 
 test('person menu: joint account switch (couples only), shown in Group, synced, cleared on unpair', () => {
