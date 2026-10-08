@@ -43,7 +43,7 @@ If the couple shares money, e.g. a joint Monzo account, switch on **Joint accoun
 - **Adding to it:** add an entry at the top of `NEWS` in `public/index.html` with each change worth telling the group about. The date of the newest entry is also the "Updated" date in Settings.
 
 ## Settling up in another currency
-Expenses stay in the trip currency, but Settle up can show and pay in another. For example, a € trip can be settled in £ so Monzo links fill in the amount. Tap **Amounts in €** on Settle up and pick a currency.
+Expenses stay in the trip currency, but Settle up can show and pay in another. For example, a € trip can be settled in £ so Monzo links fill in the amount. Tap **Settle in €** on Settle up and pick a currency.
 - **Live rate:** filled in from [Frankfurter](https://frankfurter.dev/) (free, no key, central-bank rates) via `/api/rate/EUR/GBP`. The server keeps each day's rate, so it's fetched once a day at most, and it falls back to the last known rate if Frankfurter is down.
 - **Updating:** a live rate updates daily until the first payment is recorded, then stays fixed so everyone pays at the same rate.
 - **Your own rate:** type a rate to use, e.g. the one your bank gave you. It's never replaced.

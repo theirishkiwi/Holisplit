@@ -26,7 +26,7 @@ test('Settings: Help, What\'s new, and an About line linking to the GitHub repo'
     const sections = $$('details.help summary').map(txt);
     assert.deepEqual(sections, ['Getting started', 'Adding expenses', 'Receipt photos', 'Couples and joint accounts', 'Settling up', 'Offline', 'Privacy and deleting']);
     assert.equal($$('details.help')[0].open, true, 'first section open');
-    assert.match(txt($$('details.help')[4]), /Amounts in €.*settle in another currency/);
+    assert.match(txt($$('details.help')[4]), /Settle in €.*use another currency/);
   } finally { P.w.close(); }
 });
 

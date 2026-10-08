@@ -75,9 +75,9 @@ function phone(rateReply = { ok: true, rate: 0.86, date: TODAY, source: 'Frankfu
 test('settling in £: Who pays who, the summary, Monzo link and reminder all use £; expenses stay in €', async () => {
   const { P, $, $$, txt } = phone();
   try {
-    assert.match(txt($('#sxBtn')), /Amounts in €\s*Settle in another currency/);
+    assert.match(txt($('#sxBtn')), /Settle in €\s*Use another currency/);
     P.run(`S.sx={cc:'£',rate:0.86,mode:'manual',date:'${TODAY}',day:'${TODAY}'};S.sxu=now();render()`);
-    assert.match(txt($('#sxBtn')), /Amounts in £ · €1 = £0\.86\s*your rate/);
+    assert.match(txt($('#sxBtn')), /Settle in £ · €1 = £0\.86\s*your rate/);
     assert.deepEqual($$('.srow .amt').map(txt), ['£25.80', '£25.80'], '€30 → £25.80 each');
     assert.match(P.run('summary()'), /Sam → Chris: \*£25\.80\*[\s\S]*_€1 = £0\.86_/);
     assert.equal(P.run(`payLink('monzo','chrisd',3000,'s')`), 'https://monzo.me/chrisd/25.80?d=Tuscany%20Sam', 'Monzo gets the £ amount');
