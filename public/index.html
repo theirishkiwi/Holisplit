@@ -250,6 +250,7 @@ a.paidbtn{text-decoration:none;display:inline-block}
 .ratebox{display:flex;align-items:center;gap:8px;margin-top:4px}.ratebox b{font-size:1.05rem;white-space:nowrap}.ratebox .field{flex:1;font-size:1.1rem}
 .banner.news{background:var(--soft);color:var(--soft-ink)}
 .about{text-align:center;color:var(--muted);font-size:.8rem;margin:18px 0 4px;line-height:1.6}.about a{color:var(--accent);font-weight:600}
+.cnote{color:var(--muted);font-size:.82rem;margin:8px 6px 0;line-height:1.5}.cnote .linkbtn{padding:0;margin:0;font-size:.82rem}
 .linkbtn{border:0;background:none;color:var(--accent);font:600 .95rem var(--body);padding:8px;margin-top:4px}
 .help{background:var(--card);border-radius:14px;margin-bottom:8px}
 .help summary{display:flex;align-items:center;gap:12px;padding:12px 14px;font-weight:600;cursor:pointer;list-style:none}
@@ -941,8 +942,8 @@ const partner=id=>{const p=person(id);if(!p.pair)return null;const q=S.people.fi
 const hasCouples=()=>people().some(p=>partner(p.id));
 /* Joint account: the couple shares money, so they always count as one (never a debt between them). Set on both people so it syncs. */
 const isJoint=id=>{const q=partner(id);return !!(q&&person(id).joint&&person(q).joint)};
-const hasSepCouples=()=>people().some(p=>partner(p.id)&&!isJoint(p.id));
-const byCouple=()=>prefs.couples!==false&&hasCouples();
+/* a couple always settles with the group as one; to settle separately, unpair (it syncs, so every phone agrees) */
+const byCouple=()=>hasCouples();
 /* Settling units: a couple counts as one unit when settling by couple, otherwise each person is a unit */
 function units(pair=byCouple()){
   const seen=new Set(),out=[];
@@ -1061,9 +1062,10 @@ function tripSub(){
 }
 let lastT=[];
 function rBal(){
-  const {nets,t}=plan(),couples=hasSepCouples();lastT=t;
-  let h=couples?`<div class="seg" role="group" aria-label="Settle by"><button data-mode="c" aria-pressed="${byCouple()}">Couples</button><button data-mode="p" aria-pressed="${!byCouple()}">Everyone</button></div>`:'';
-  const fn=u=>u.ids.map(i=>i===me()?'You':first(pname(i))).join(' & ');
+  const {nets,t}=plan();lastT=t;
+  let h='';
+  /* couples are marked * and explained under the list */
+  const fn=u=>u.ids.map(i=>i===me()?'You':first(pname(i))).join(' & ')+(u.ids.length>1?'*':'');
   /* couples (or long names) need room: names on the first line, amount + button on the second */
   const roomy=t.some(([f,to])=>f.ids.length>1||to.ids.length>1||(fn(f)+fn(to)).length>10);
   const trow=([f,to,m],i)=>roomy
@@ -1081,6 +1083,8 @@ function rBal(){
       if(op)h+=otherI.map(i=>trow(t[i],i)).join('');}
   }
   h+='</div>';
+  if(t.some(([f,to])=>f.ids.length>1||to.ids.length>1))
+    h+=`<p class="cnote">* Couples settle up as one. Want to settle separately? <button class="linkbtn" data-goto="ppl">Unpair them in Group</button></p>`;
   /* nudge: you're owed money but haven't said how to be paid */
   const m0=me();
   if(m0&&!hasPay(person(m0))&&t.some(x=>x[1].ids.includes(m0)))
@@ -1176,7 +1180,6 @@ document.addEventListener('click',e=>{
   if(pw&&linking){const a=person(linking),b=person(pw.dataset.pairwith);a.pair=b.id;b.pair=a.id;a.u=b.u=now();linking=null;save();render();toast(`${a.name} & ${b.name} paired`);return}
   const up=e.target.closest('[data-unpair]');
   if(up){const a=person(up.dataset.unpair),b=person(partner(a.id));delete a.pair;delete b.pair;delete a.joint;delete b.joint;a.u=b.u=now();save();render();return}
-  const md=e.target.closest('[data-mode]');if(md){prefs.couples=md.dataset.mode==='c';savePrefs();rBal();return}
   const rm=e.target.closest('[data-rm]');
   if(rm){const id=rm.dataset.rm,n=expenses().filter(x=>x.paidBy===id||x.for.includes(id)).length;
     if(n){$('#pmsg').textContent=`${pname(id)} is in ${n} expense${n>1?'s':''}. Remove those first.`;return}
@@ -1616,7 +1619,8 @@ const NEWS=[
   {d:'2026-10-08',head:'Settle up in £, a clear offline banner, and a help guide',items:[
     'Settle up in £ (or another currency) at today\'s rate. Monzo links fill in the £ amount. Tap “Settle in €” on Settle up.',
     'A banner tells you when you\'re offline. You can still add expenses, and they sync as soon as you\'re back.',
-    'Help guide and What\'s new, in Settings.']},
+    'Help guide and What\'s new, in Settings.',
+    'Couples always settle up as one (marked *). To settle separately, unpair them in Group.']},
   {d:'2026-10-07',head:'Joint accounts for couples',items:[
     'Couples who share money can turn on Joint account: shown together and never owe each other.',
     '“You\'re owed” instead of “you lent”, and tidier expense rows on smaller phones.']},
@@ -1640,7 +1644,8 @@ const HELP=[
     'Photos are read by the app\'s Cloudflare AI and not kept there. You can turn this off in Settings.',
     'If something looks already added (same amount and shop, or same amount and type that day), the app asks first.']],
   ['i-link','Couples and joint accounts',[
-    'Pair two people in <b>Group</b>: they settle up as one, so there are fewer payments.',
+    'Pair two people in <b>Group</b>: they settle up as one, so there are fewer payments. Couples are marked * on Settle up.',
+    'Want to settle separately? Unpair them in <b>Group</b>.',
     'Share a bank account? Turn on <b>Joint account</b> in either person\'s menu. You\'re shown together (“you\'re owed €150”) and never owe each other.']],
   ['i-pay','Settling up',[
     '<b>Settle up</b> shows the fewest payments that make everyone square.',

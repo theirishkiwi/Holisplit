@@ -30,11 +30,11 @@ To remove one sooner, tap Delete next to it in Recently deleted and type DELETE.
 for everyone is then erased from the server with its photos, and no phone can bring it back.
 
 ## Couples and joint accounts
-Pair two people as a couple in Group (tap a person). Couples settle up with the group as one, so there are fewer payments. Each expense still shows each person's own share ("you owe €3.38").
+Pair two people as a couple in Group (tap a person). Couples always settle up with the group as one, so there are fewer payments, and they're marked * on Settle up. To settle separately, unpair them; this syncs, so every phone shows the same payments. Each expense still shows each person's own share ("you owe €3.38").
 
 If the couple shares money, e.g. a joint Monzo account, switch on **Joint account** in either partner's menu:
 - Each expense counts the two of you together, whoever paid. If Leanne pays €200 for 8 people, Chris sees "you're owed €150.00" (the other six people's shares), not "you owe €25.00".
-- You always settle as one, even when Settle up is set to Everyone, so there's never a payment between partners.
+- There's never a payment between partners.
 - It's saved on both people and syncs to everyone. Unpairing turns it off.
 
 ## Help and What's new
