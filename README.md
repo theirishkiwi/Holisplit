@@ -6,7 +6,7 @@ wrangler.jsonc     config: static assets + KV namespace "TRIPS"
 
 ## Tests
 npm install
-npm test      (99 tests: split maths, settling, couples, joint accounts, payments, currencies, amount entry, dates, worker sync, photos, link reset, encryption, delete and restore, closing screens, paid toggle, payment links, permanent delete, layout, receipt scanning, duplicate checks, offline, settling in another currency)
+npm test      (104 tests: split maths, settling, couples, joint accounts, payments, currencies, amount entry, dates, worker sync, photos, link reset, encryption, delete and restore, closing screens, paid toggle, payment links, permanent delete, layout, receipt scanning, duplicate checks, offline, settling in another currency, help and what's new)
 
 ## Deploy (one time)
 1. npx wrangler login
@@ -36,6 +36,11 @@ If the couple shares money, e.g. a joint Monzo account, switch on **Joint accoun
 - Each expense counts the two of you together, whoever paid. If Leanne pays €200 for 8 people, Chris sees "you're owed €150.00" (the other six people's shares), not "you owe €25.00".
 - You always settle as one, even when Settle up is set to Everyone, so there's never a payment between partners.
 - It's saved on both people and syncs to everyone. Unpairing turns it off.
+
+## Help and What's new
+- **Help** (Settings → Help, or "How it works" on an empty trip) is a short guide built into the app, so it works offline.
+- **What's new:** after an update, people who've used the app before see a one-line banner. **See** opens the list of changes. New users don't see it.
+- **Adding to it:** add an entry at the top of `NEWS` in `public/index.html` with each change worth telling the group about. The date of the newest entry is also the "Updated" date in Settings.
 
 ## Settling up in another currency
 Expenses stay in the trip currency, but Settle up can show and pay in another. For example, a € trip can be settled in £ so Monzo links fill in the amount. Tap **Amounts in €** on Settle up and pick a currency.

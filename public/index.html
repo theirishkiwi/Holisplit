@@ -248,6 +248,18 @@ a.paidbtn{text-decoration:none;display:inline-block}
 .ccopt{min-width:54px;padding:10px 12px;border-radius:12px;border:1.5px solid var(--line);background:var(--card);font:600 1rem var(--body);color:var(--fg)}
 .ccopt[aria-pressed="true"]{border-color:var(--accent);background:var(--soft);color:var(--soft-ink)}
 .ratebox{display:flex;align-items:center;gap:8px;margin-top:4px}.ratebox b{font-size:1.05rem;white-space:nowrap}.ratebox .field{flex:1;font-size:1.1rem}
+.banner.news{background:var(--soft);color:var(--soft-ink)}
+.about{text-align:center;color:var(--muted);font-size:.8rem;margin:18px 0 4px;line-height:1.6}.about a{color:var(--accent);font-weight:600}
+.linkbtn{border:0;background:none;color:var(--accent);font:600 .95rem var(--body);padding:8px;margin-top:4px}
+.help{background:var(--card);border-radius:14px;margin-bottom:8px}
+.help summary{display:flex;align-items:center;gap:12px;padding:12px 14px;font-weight:600;cursor:pointer;list-style:none}
+.help summary::-webkit-details-marker{display:none}
+.help summary .ic{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;flex:none;background:var(--soft);color:var(--soft-ink)}
+.help summary .ic svg{width:18px;height:18px}.help summary span{flex:1}
+.help summary .fchev{margin-top:0;flex:none}.help[open] summary .fchev{transform:rotate(-90deg)}
+.help ul{margin:0;padding:0 16px 14px 62px;color:var(--fg);font-size:.92rem;line-height:1.5}.help li{margin-bottom:6px}
+.newsd{color:var(--muted);font-size:.78rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;margin:16px 4px 6px}
+.newsl{background:var(--card);border-radius:14px;padding:12px 14px 12px 32px;margin:0;font-size:.92rem;line-height:1.5}.newsl li{margin:3px 0}
 .rateinfo{color:var(--muted);font-size:.85rem;margin:8px 2px 0;line-height:1.4}
 .fold{display:flex;align-items:center;justify-content:space-between;width:100%;border:0;border-top:1px solid var(--line);background:none;padding:12px 8px 8px;color:var(--muted);font-weight:600;font-size:.88rem}
 .foldh{display:flex;align-items:center;gap:6px;border:0;background:none;padding:0;color:var(--muted)}
@@ -332,6 +344,7 @@ a.paidbtn{text-decoration:none;display:inline-block}
   <div class="banner" id="deleted" hidden><span id="delText"></span><button id="restoreBtn">Restore</button></div>
   <div class="banner" id="revoked" hidden><span>This trip's link was reset. Open the new link from the group to keep syncing. Your changes will carry over.</span></div>
   <div class="banner offline" id="offline" hidden role="status"><svg class="i"><use href="#i-cloudoff"/></svg><span id="offText"></span><button id="retryBtn">Retry</button></div>
+  <div class="banner news" id="news" hidden><span id="newsText"></span><span class="bb"><button id="newsSee">See</button><button id="newsX" aria-label="Dismiss">✕</button></span></div>
   <div class="banner" id="sample" hidden><span>Example trip</span><button id="clearSample">Start fresh</button></div>
   <nav class="tabs" role="tablist">
     <button role="tab" data-tab="exp">Expenses</button>
@@ -1017,9 +1030,10 @@ function meCard(){
 }
 function rExp(){
   const E=expenses();
-  if(!people().length){$('#exp').innerHTML='<p class="empty">Add your group first.</p>';return}
+  const how='<br><button class="linkbtn" data-help>How it works</button>';
+  if(!people().length){$('#exp').innerHTML=`<p class="empty">Add your group first.${how}</p>`;return}
   let h=meCard();
-  if(!E.length){$('#exp').innerHTML=h+'<p class="empty">No expenses yet.</p>';return}
+  if(!E.length){$('#exp').innerHTML=h+`<p class="empty">No expenses yet.${how}</p>`;return}
   const days=[...new Set(E.map(e=>e.date))];
   if(!open)open=new Set([days[0]]);
   const all=days.every(d=>open.has(d));
@@ -1168,6 +1182,7 @@ document.addEventListener('click',e=>{
     if(n){$('#pmsg').textContent=`${pname(id)} is in ${n} expense${n>1?'s':''}. Remove those first.`;return}
     const p=S.people.find(x=>x.id===id),q=partner(id);if(q){const o=person(q);delete o.pair;delete o.joint;o.u=now()}delete p.pair;delete p.joint;p.del=true;p.u=now();save();render();return}
   if(e.target.closest('#sxBtn'))return openSettleCur();
+  if(e.target.closest('[data-help]'))return openHelp();
   if(e.target.closest('#copy'))copy(summary(),'Copied');
   if(e.target.closest('#copyLink'))copy(tripLink(),'Link copied');
 });
@@ -1594,6 +1609,79 @@ function exportCsv(){
   setTimeout(()=>URL.revokeObjectURL(a.href),5000);toast('Spreadsheet saved');
 }
 
+/* ---- Help, What's new, About ---- */
+const REPO='https://github.com/theirishkiwi/Holisplit';
+/* newest first; the first entry's head is what returning users see in the banner after an update */
+const NEWS=[
+  {d:'2026-10-08',head:'Settle up in £, a clear offline banner, and a help guide',items:[
+    'Settle up in £ (or another currency) at today\'s rate. Monzo links fill in the £ amount. Tap “Amounts in €” on Settle up.',
+    'A banner tells you when you\'re offline. You can still add expenses, and they sync as soon as you\'re back.',
+    'Help guide and What\'s new, in Settings.']},
+  {d:'2026-10-07',head:'Joint accounts for couples',items:[
+    'Couples who share money can turn on Joint account: shown together and never owe each other.',
+    '“You\'re owed” instead of “you lent”, and tidier expense rows on smaller phones.']},
+  {d:'2026-10-06',head:'Smarter receipt scanning and duplicate checks',items:[
+    'Receipt scanning fills in the shop name too, even from a sideways photo.',
+    'The app asks before adding an expense that looks like it\'s already there.']},
+];
+const LATEST=NEWS[0].d;
+const HELP=[
+  ['i-plus','Getting started',[
+    'Name the trip at the top. Pick its currency in Settings.',
+    'Add everyone in <b>Group</b>. Tap your own name and choose <b>This is me</b>, so the app shows what you owe and are owed.',
+    'Invite the group from <b>Group</b>: WhatsApp or Copy link. Everyone with the link sees the same trip, kept in sync.']],
+  ['c-food','Adding expenses',[
+    'Tap <b>+</b>. Enter the amount, what it was for, who paid and who it\'s split between (everyone by default).',
+    'Tap the icon next to “What for?” to pick a category. It\'s often guessed for you.',
+    'Paid in another currency? Tap <b>€</b> next to the amount and enter the rate.',
+    'Tap an expense to edit or delete it. Deleting can be undone.']],
+  ['i-cam','Receipt photos',[
+    'Tap the camera on a new expense. The total, date, shop and type are filled in for you. Check them before saving.',
+    'Photos are read by the app\'s Cloudflare AI and not kept there. You can turn this off in Settings.',
+    'If something looks already added (same amount and shop, or same amount and type that day), the app asks first.']],
+  ['i-link','Couples and joint accounts',[
+    'Pair two people in <b>Group</b>: they settle up as one, so there are fewer payments.',
+    'Share a bank account? Turn on <b>Joint account</b> in either person\'s menu. You\'re shown together (“you\'re owed €150”) and never owe each other.']],
+  ['i-pay','Settling up',[
+    '<b>Settle up</b> shows the fewest payments that make everyone square.',
+    '<b>Pay</b> opens Monzo, Revolut or Starling, or shows bank details. Add yours in Settings → Payment details.',
+    'Owed money? <b>Remind</b> sends a WhatsApp message. <b>Paid</b> records a payment, with Undo.',
+    'Tap <b>Amounts in €</b> to settle in another currency, e.g. £ at today\'s rate. The rate is fixed when the first payment is recorded.']],
+  ['i-cloudoff','Offline',[
+    'Everything works without signal. Changes are saved on your phone and sync when you\'re back online.',
+    'A banner shows when you\'re offline. Tap <b>Retry</b> to try again straight away.']],
+  ['i-gear','Privacy and deleting',[
+    'Trips are encrypted on your phone before they\'re synced. The key is only in the trip link, so the server can\'t read names or amounts.',
+    'If the link was shared too widely, reset it in Settings. The group needs the new link.',
+    'Settings → <b>Delete this trip</b>. It can be restored for 30 days, or deleted permanently.']],
+];
+function openHelp(){
+  const sc=openScrim();
+  sc.innerHTML=`<div class="sheet" role="dialog" aria-label="Help">
+    <div class="sh"><button type="button" class="iconbtn" data-dismiss aria-label="Close">${ico('i-down')}</button><h3>How it works</h3></div>
+    ${HELP.map(([ic,t,lines],i)=>`<details class="help"${i===0?' open':''}><summary><span class="ic">${ico(ic)}</span><span>${t}</span>${ico('i-chev','i fchev')}</summary><ul>${lines.map(l=>`<li>${l}</li>`).join('')}</ul></details>`).join('')}
+    <p class="about">Questions or ideas? <a href="${REPO}" target="_blank" rel="noopener">Holiday Split on GitHub</a></p>
+  </div>`;
+  sc.onclick=e=>{if(e.target===sc)close()};
+}
+function openNews(){
+  prefs.news=LATEST;savePrefs();$('#news').hidden=true;
+  const sc=openScrim();
+  sc.innerHTML=`<div class="sheet" role="dialog" aria-label="What's new">
+    <div class="sh"><button type="button" class="iconbtn" data-dismiss aria-label="Close">${ico('i-down')}</button><h3>What's new</h3></div>
+    ${NEWS.map(n=>`<div class="newsd">${new Date(n.d+'T12:00').toLocaleDateString('en-GB',{day:'numeric',month:'long'})}</div><ul class="newsl">${n.items.map(i=>`<li>${i}</li>`).join('')}</ul>`).join('')}
+    <p class="about"><a href="${REPO}" target="_blank" rel="noopener">Every change is on GitHub</a></p>
+  </div>`;
+  sc.onclick=e=>{if(e.target===sc)close()};
+}
+/* after an update, returning users get a one-line banner; brand-new users don't */
+function checkNews(){
+  if(prefs.news==null){prefs.news=prefs.cur?'':LATEST;savePrefs()}
+  const show=prefs.news<LATEST;$('#news').hidden=!show;
+  if(show)$('#newsText').textContent='New: '+NEWS[0].head;
+}
+$('#newsSee').onclick=openNews;
+$('#newsX').onclick=()=>{prefs.news=LATEST;savePrefs();$('#news').hidden=true};
 function openSettings(){
   const sc=openScrim();
   const status=!syncAvail?'Sync works in the hosted app only':S.sample?'The example trip isn\'t synced':({ok:'Synced',sync:'Syncing…',offline:'Offline. Changes sync when you\'re back online.'}[$('#cloud').dataset.s]||'')+(S.key?' · encrypted':'');
@@ -1617,7 +1705,12 @@ function openSettings(){
     <h2 style="margin:4px 4px -6px">Trips</h2>
     <div class="set">${trips}<button class="trip newt" id="snew">${ico('i-plus')}New trip</button></div>
     ${deleted?`<h2 style="margin:4px 4px -6px">Recently deleted</h2><div class="set">${deleted}</div>`:''}
+    <div class="set">
+      <div><label>Help<small>How everything works</small></label><button class="btn" id="shelp">Open</button></div>
+      <div><label>What's new<small>${esc(NEWS[0].head)}</small></label><button class="btn" id="snews">See</button></div>
+    </div>
     <button class="btn danger" id="sdel">Delete this trip…</button>
+    <p class="about">Holiday Split · <a href="${REPO}" target="_blank" rel="noopener">Open source on GitHub</a><br>Updated ${new Date(LATEST+'T12:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}</p>
   </div>`;
   sc.onclick=e=>{
     if(e.target===sc||e.target.closest('#sclose'))return close();
@@ -1625,6 +1718,8 @@ function openSettings(){
     if(tr){close();const id=tr.dataset.trip;if(id!==S.id){const t=loadTrip(id);t?switchTo(t):join(id)}return}
     if(e.target.closest('#snew')){close();newTrip()}
     if(e.target.closest('#sdel')){openDelete();return}
+    if(e.target.closest('#shelp')){close();setTimeout(openHelp,0);return}
+    if(e.target.closest('#snews')){close();setTimeout(openNews,0);return}
     const rr=e.target.closest('[data-restore]');if(rr){close();restoreTrip(rr.dataset.restore);return}
     const er=e.target.closest('[data-erase]');if(er){openErase(er.dataset.erase);return}
     const rs=e.target.closest('#sreset');if(rs){if(rs.dataset.armed){close();resetLink()}else{rs.dataset.armed=1;rs.textContent='Tap to confirm'}return}
@@ -1690,7 +1785,7 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('#scrim').hidden
 window.addEventListener('hashchange',checkHash);
 /* offline: register the service worker on the hosted app only */
 ready.then(()=>{if(syncAvail&&'serviceWorker' in navigator)navigator.serviceWorker.register('/sw.js').catch(()=>{})});
-render();checkHash();setTimeout(checkPending,300);
+render();checkHash();checkNews();setTimeout(checkPending,300);
 </script>
 </body>
 </html>
