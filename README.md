@@ -6,7 +6,7 @@ wrangler.jsonc     config: static assets + KV namespace "TRIPS"
 
 ## Tests
 npm install
-npm test      (104 tests: split maths, settling, couples, joint accounts, payments, currencies, amount entry, dates, worker sync, photos, link reset, encryption, delete and restore, closing screens, paid toggle, payment links, permanent delete, layout, receipt scanning, duplicate checks, offline, settling in another currency, help and what's new)
+npm test      (109 tests: split maths, settling, couples, joint accounts, payments, currencies, amount entry, dates, worker sync, photos, link reset, encryption, delete and restore, closing screens, paid toggle, payment links, permanent delete, layout, receipt scanning, duplicate checks, offline, settling in another currency, help and what's new, day-of-expense rates)
 
 ## Deploy (one time)
 1. npx wrangler login
@@ -41,6 +41,13 @@ If the couple shares money, e.g. a joint Monzo account, switch on **Joint accoun
 - **Help** (Settings → Help, or "How it works" on an empty trip) is a short guide built into the app, so it works offline.
 - **What's new:** after an update, people who've used the app before see a one-line banner. **See** opens the list of changes. New users don't see it.
 - **Adding to it:** add an entry at the top of `NEWS` in `public/index.html` with each change worth telling the group about. The date of the newest entry is also the "Updated" date in Settings.
+
+## Expenses in another currency
+Tap the currency next to the amount (marked ⌄) and pick e.g. € on a £ trip.
+- **Day's rate filled in:** the rate for the expense's date is filled in from Frankfurter via `/api/rate/EUR/GBP?date=YYYY-MM-DD`. Changing the date updates it. Past rates never change, so the server keeps each one permanently.
+- **Your own rate:** typing a rate keeps it. "Use the rate for …" switches back to the day's rate.
+- **Receipts:** a scanned receipt in another currency gets the rate for the receipt's date.
+- **No signal:** the last rate you used is filled in, with a note to check it.
 
 ## Settling up in another currency
 Expenses stay in the trip currency, but Settle up can show and pay in another. For example, a € trip can be settled in £ so Monzo links fill in the amount. Tap **Settle in €** on Settle up and pick a currency.

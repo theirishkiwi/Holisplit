@@ -77,7 +77,8 @@ test('worker /api/scan: refuses unknown or erased trips, non-JPEGs, and reports 
 
 async function phone(reply) {
   const { default: worker } = await W();
-  const ai = fakeAI(reply), env = { TRIPS: kv(), AI: ai }, P = load({ fetch: workerFetch(worker, env) });
+  const ai = fakeAI(reply), env = { TRIPS: kv(), AI: ai }, P = load({ fetch: (u, i) => String(u).includes('/api/rate/')    // no live rates in these tests: the phone falls back to your last rate
+    ? Promise.resolve({ ok: false, status: 503, json: async () => ({ error: 'rate unavailable' }) }) : workerFetch(worker, env)(u, i) });
   await tick(60);
   P.run(`compress=async()=>'data:image/jpeg;base64,/9j/4AAQ';imgDims=async()=>[843,1120];turnData=async d=>d+'TURNED';   // no canvas in the test browser
     S=blank();S.name='Tuscany';S.cur='€';S.people.push({id:'c',name:'Chris',c:0,u:1},{id:'s',name:'Sam',c:1,u:1});prefs.me={[S.id]:'c'};save()`);

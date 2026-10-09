@@ -142,20 +142,24 @@ async function handleScan(req, env, trip) {
 // ---- Exchange rates for settling up in another currency ----
 // Daily reference rates from Frankfurter (free, no key, central-bank data). Kept in KV for the day, so each
 // currency pair is fetched at most once a day however many phones ask; if Frankfurter is down, the last rate is used.
-const RATE_API = (a, b) => `https://api.frankfurter.dev/v2/rate/${a.toLowerCase()}/${b.toLowerCase()}`;
-async function handleRate(env, a, b) {
+const RATE_API = (a, b, date) => `https://api.frankfurter.dev/v2/rate/${a.toLowerCase()}/${b.toLowerCase()}` + (date ? `?date=${date}` : '');
+// ?date=YYYY-MM-DD gives a past day's rate (for an expense entered later); past rates never change, so they're kept for good
+async function handleRate(env, a, b, date) {
   if (!/^[A-Z]{3}$/.test(a) || !/^[A-Z]{3}$/.test(b) || a === b) return json({ error: 'bad currency' }, 400);
-  const day = new Date().toISOString().slice(0, 10), key = `rate:${a}:${b}:${day}`, last = `rate:${a}:${b}:last`;
+  const day = new Date().toISOString().slice(0, 10);
+  if (date != null && !(/^\d{4}-\d{2}-\d{2}$/.test(date) && !isNaN(Date.parse(date + 'T00:00:00Z')))) return json({ error: 'bad date' }, 400);
+  const past = date && date < day && date >= '1999-01-04' ? date : null;           // today or later: the latest rate
+  const key = `rate:${a}:${b}:${past || day}`, last = `rate:${a}:${b}:last`;
   const hit = await env.TRIPS.get(key);
   if (hit) return json({ ok: true, ...JSON.parse(hit) });
   try {
-    const r = await fetch(RATE_API(a, b), { signal: AbortSignal.timeout(5000), cf: { cacheTtl: 3600 } });
+    const r = await fetch(RATE_API(a, b, past), { signal: AbortSignal.timeout(5000), cf: { cacheTtl: 3600 } });
     if (!r.ok) throw new Error(r.status);
     const j = await r.json();
     if (!(j && j.rate > 0 && j.rate < 1e6)) throw new Error('bad rate');
     const out = JSON.stringify({ rate: j.rate, date: String(j.date || day).slice(0, 10), source: 'Frankfurter' });
-    await env.TRIPS.put(key, out, { expirationTtl: 2 * 86400 });
-    await env.TRIPS.put(last, out);
+    if (past) await env.TRIPS.put(key, out);
+    else { await env.TRIPS.put(key, out, { expirationTtl: 2 * 86400 }); await env.TRIPS.put(last, out); }
     return json({ ok: true, ...JSON.parse(out) });
   } catch (e) {
     const old = await env.TRIPS.get(last);
@@ -199,7 +203,7 @@ export default {
     const url = new URL(req.url);
     if (url.pathname === '/api/ping') return json({ ok: true, scan: !!env.AI });
     const rm = url.pathname.match(/^\/api\/rate\/([A-Za-z]{3})\/([A-Za-z]{3})$/);
-    if (rm) return handleRate(env, rm[1].toUpperCase(), rm[2].toUpperCase());
+    if (rm) return handleRate(env, rm[1].toUpperCase(), rm[2].toUpperCase(), url.searchParams.get('date'));
     const sm = url.pathname.match(/^\/api\/scan\/([^/]+)$/);
     if (sm) return handleScan(req, env, sm[1]);
 
