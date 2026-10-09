@@ -113,3 +113,56 @@ test('editing an existing expense keeps its saved rate', async () => {
     assert.match(txt($('#rnote')), /Your rate\. Use the rate for 4 Oct/, 'but you can switch to the day\'s rate');
   } finally { P.w.close(); }
 });
+
+// ---- switching currency on an expense ----
+function euroTrip() {
+  const P = load({ fetch: async u => {
+    u = String(u);
+    if (u.includes('/api/rate/GBP/EUR')) return { ok: true, status: 200, json: async () => ({ ok: true, rate: 1.1805, date: '2026-10-08' }) };
+    if (u.includes('/api/rate/EUR/GBP')) return { ok: true, status: 200, json: async () => ({ ok: true, rate: 0.8471, date: '2026-10-08' }) };
+    throw new TypeError('offline');
+  } });
+  P.run(`S=blank();S.name='Tuscany';S.cur='€';S.dirty=false;
+    S.people.push({id:'c',name:'Chris',c:0,u:1},{id:'l',name:'Leanne',c:1,u:1});
+    S.expenses.push({id:'fuel',desc:'Fuel',amt:8500,date:'2026-10-08',paidBy:'c',for:['c','l'],cat:'transport',u:3});
+    syncAvail=true;prefs.me={[S.id]:'c'};tab='exp';open=new Set(['2026-10-08']);render()`);
+  const $ = s => P.w.document.querySelector(s);
+  const click = s => P.run(`document.querySelector(${JSON.stringify(s)}).click()`);
+  const txt = el => el.textContent.replace(/\s+/g, ' ').trim();
+  const pick = async cc => { click('#ccbtn'); click(`[data-cc="${cc}"]`); await tick(20); };
+  return { P, $, click, txt, pick };
+}
+
+test('editing a saved €85.00 expense and switching to £ converts it (with one tap to keep 85.00)', async () => {
+  const { P, $, click, txt, pick } = euroTrip();
+  try {
+    click('[data-edit="fuel"]');
+    await pick('£');
+    assert.equal($('#frate').value, '1.1805');
+    assert.equal($('#famt').value, '72.00', '€85.00 ÷ 1.1805');
+    assert.match(txt($('#cvnote')), /Converted from €85\.00\. Keep 85\.00 instead/);
+    assert.equal(txt($('#conv')), '= €85.00', 'still worth €85');
+    await pick('€');
+    assert.equal($('#famt').value, '85.00', 'and back again');
+    await pick('£');
+    click('#cvKeep');
+    assert.equal($('#famt').value, '85.00', 'Keep: it really was £85');
+    assert.equal($('#cvnote').hidden, true);
+  } finally { P.w.close(); }
+});
+
+test('a new expense keeps the number you typed when you switch currency, and offers to convert', async () => {
+  const { P, $, click, txt, pick } = euroTrip();
+  try {
+    click('#add');
+    P.run(`(()=>{const a=document.querySelector('#famt');a.value='85';a.oninput()})()`);
+    await pick('£');
+    assert.equal($('#famt').value, '85', 'you typed 85 and meant £85');
+    assert.match(txt($('#cvnote')), /Convert €85\.00 to £72\.00/);
+    click('#cvDo');
+    assert.equal($('#famt').value, '72.00');
+    assert.match(txt($('#cvnote')), /Converted from €85\.00\./);
+    P.run(`(()=>{const a=document.querySelector('#famt');a.value='72.45';a.oninput()})()`);
+    assert.equal($('#cvnote').hidden, true, 'typing clears the note');
+  } finally { P.w.close(); }
+});

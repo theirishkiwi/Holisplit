@@ -6,7 +6,7 @@ wrangler.jsonc     config: static assets + KV namespace "TRIPS"
 
 ## Tests
 npm install
-npm test      (109 tests: split maths, settling, couples, joint accounts, payments, currencies, amount entry, dates, worker sync, photos, link reset, encryption, delete and restore, closing screens, paid toggle, payment links, permanent delete, layout, receipt scanning, duplicate checks, offline, settling in another currency, help and what's new, day-of-expense rates)
+npm test      (111 tests: split maths, settling, couples, joint accounts, payments, currencies, amount entry, dates, worker sync, photos, link reset, encryption, delete and restore, closing screens, paid toggle, payment links, permanent delete, layout, receipt scanning, duplicate checks, offline, settling in another currency, help and what's new, day-of-expense rates)
 
 ## Deploy (one time)
 1. npx wrangler login
@@ -48,6 +48,7 @@ Tap the currency next to the amount (marked ⌄) and pick e.g. € on a £ trip.
 - **Your own rate:** typing a rate keeps it. "Use the rate for …" switches back to the day's rate.
 - **Receipts:** a scanned receipt in another currency gets the rate for the receipt's date.
 - **No signal:** the last rate you used is filled in, with a note to check it.
+- **Switching currency:** switching an existing expense to another currency converts its amount at the day's rate, e.g. €85.00 → £72.00, with "Keep 85.00 instead" if you were correcting a mistake. On a new expense, the number you just typed is kept, and "Convert €85.00 to £72.00" is offered.
 
 ## Settling up in another currency
 Expenses stay in the trip currency, but Settle up can show and pay in another. For example, a € trip can be settled in £ so Monzo links fill in the amount. Tap **Settle in €** on Settle up and pick a currency.
