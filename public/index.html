@@ -261,6 +261,7 @@ a.paidbtn{text-decoration:none;display:inline-block}
 .help ul{margin:0;padding:0 16px 14px 62px;color:var(--fg);font-size:.92rem;line-height:1.5}.help li{margin-bottom:6px}
 .newsd{color:var(--muted);font-size:.78rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;margin:16px 4px 6px}
 .newsl{background:var(--card);border-radius:14px;padding:12px 14px 12px 32px;margin:0;font-size:.92rem;line-height:1.5}.newsl li{margin:3px 0}
+.rateinfo a{color:var(--accent);font-weight:600}
 .rateinfo{color:var(--muted);font-size:.85rem;margin:8px 2px 0;line-height:1.4}
 .fold{display:flex;align-items:center;justify-content:space-between;width:100%;border:0;border-top:1px solid var(--line);background:none;padding:12px 8px 8px;color:var(--muted);font-weight:600;font-size:.88rem}
 .foldh{display:flex;align-items:center;gap:6px;border:0;background:none;padding:0;color:var(--muted)}
@@ -1384,10 +1385,10 @@ function openSettleCur(){
     $('#sxRateBox').hidden=!other;if(!other)return;
     $('#sxPre').textContent=`${S.cur}1 = ${st.cc}`;
     if(document.activeElement!==$('#sxrate'))$('#sxrate').value=st.rate>0?String(+(+st.rate).toFixed(6)):'';
-    $('#sxInfo').textContent=msg||(!live(st.cc)?'There\'s no live rate for this currency. Enter the rate yourself.'
+    $('#sxInfo').innerHTML=msg?esc(msg):(!live(st.cc)?'There\'s no live rate for this currency. Enter the rate yourself.'
       :st.mode==='manual'?'Your rate. It stays as you set it.'
       :st.fixed?`Live rate, fixed on ${shortDate(st.fixed)} when the first payment was recorded.`
-      :st.rate?`Live rate from Frankfurter (central-bank rates)${st.date?', '+shortDate(st.date):''}. Updates daily until the first payment is recorded, then stays fixed.`:'');
+      :st.rate?`Live rate from <a href="https://frankfurter.dev/" target="_blank" rel="noopener">Frankfurter</a> (central-bank rates)${st.date?', '+shortDate(st.date):''}. Updates daily until the first payment is recorded, then stays fixed.`:'');
     $('#sxLive').hidden=!(live(st.cc)&&(st.mode==='manual'||st.fixed||!st.rate));
   };
   const getLive=async()=>{
