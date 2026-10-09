@@ -149,6 +149,8 @@ test('the currency sheet: pick £ (live rate filled in), type your own, or go ba
     await tick(30);
     assert.equal($('#sxrate').value, '0.86');
     assert.match(txt($('#sxInfo')), /Live rate from Frankfurter/);
+    assert.equal($('#sxInfo a').getAttribute('href'), 'https://frankfurter.dev/', 'Frankfurter links to its site');
+    assert.equal($('#sxInfo a').getAttribute('target'), '_blank');
     $('#sxform').dispatchEvent(new P.w.Event('submit', { bubbles: true, cancelable: true }));
     assert.deepEqual(P.run('[S.sx.cc,S.sx.rate,S.sx.mode]'), ['£', 0.86, 'live']);
     click($('#sxBtn'));
