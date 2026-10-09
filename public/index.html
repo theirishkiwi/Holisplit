@@ -127,6 +127,8 @@ h2{font:600 .78rem var(--body);text-transform:uppercase;letter-spacing:.08em;col
 .descrow input{flex:1;min-width:0}
 .catbtn{border:0;border-radius:12px;width:52px;display:flex;align-items:center;justify-content:center;gap:2px;flex:none;color:#3a4052}
 .catbtn.none{background:var(--tile);color:var(--muted)}
+.ccbtn{display:flex;align-items:center;justify-content:center;gap:4px}.ccbtn .caret{width:12px;height:12px;transform:rotate(90deg);opacity:.6;flex:none}
+.ratenote{flex-basis:100%;color:var(--muted);font-weight:500;font-size:.82rem;line-height:1.4}.ratenote a,.ratenote button{color:var(--accent);font-weight:600}.ratenote button{border:0;background:none;padding:0;font:inherit}
 .catbtn .caret{width:12px;height:12px;transform:rotate(90deg);opacity:.6}
 .catmenu{position:absolute;right:0;top:calc(100% + 6px);background:var(--card);border-radius:16px;box-shadow:0 12px 32px rgb(10 14 30 / .2);padding:8px;display:grid;grid-template-columns:repeat(4,46px);gap:6px;z-index:5}
 .cat{border:2px solid transparent;border-radius:12px;width:46px;height:46px;display:grid;place-items:center;color:#3a4052}
@@ -900,10 +902,14 @@ const fromS=p=>{const x=sx();return x?Math.round(p/x.rate):p};               /* 
 const smoney=m=>{const p=sAmt(m),n=Math.abs(p)/100;return (p<0?'−':'')+sCc()+n.toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2})};
 const rateTxt=(x=sx())=>x?`${S.cur}1 = ${x.cc}${(+x.rate).toFixed(4).replace(/0+$/,'').replace(/\.$/,'')}`:'';
 const shortDate=d=>new Date(d+'T12:00').toLocaleDateString('en-GB',{day:'numeric',month:'short'});
-async function fetchRate(cc){
-  const a=ISO[S.cur],b=ISO[cc];if(!a||!b||!syncAvail)return null;
-  try{const r=await fetch(`/api/rate/${a}/${b}`,{cache:'no-store'});if(!r.ok)return null;const j=await r.json();return j&&j.rate>0?j:null}catch(e){return null}
+const rateMemo={};
+async function getRate(from,to,date){
+  const a=ISO[from],b=ISO[to];if(!a||!b||a===b||!syncAvail)return null;
+  const k=`${a}:${b}:${date||''}`;if(rateMemo[k])return rateMemo[k];
+  try{const r=await fetch(`/api/rate/${a}/${b}`+(date?`?date=${date}`:''),{cache:'no-store'});if(!r.ok)return null;
+    const j=await r.json();if(!(j&&j.rate>0))return null;if(date&&!j.stale)rateMemo[k]=j;return j}catch(e){return null}
 }
+const fetchRate=cc=>getRate(S.cur,cc);
 let rateBusy=false;
 async function refreshRate(){
   const x=sx();if(!x||x.mode!=='live'||x.fixed||x.day===today()||rateBusy)return;
@@ -1218,7 +1224,7 @@ function openSheet(ex){
     cb.innerHTML=ico('c-'+(c||'other'))+ico('i-chev','i caret');cb.setAttribute('aria-expanded',f.menu);
     $('#catmenu').hidden=!f.menu;
     $('#catmenu').innerHTML=CATS.map(k=>`<button type="button" class="cat" data-cat="${k}" aria-pressed="${k===c}" aria-label="${CAT_NAME[k]}" style="background:${CAT_COL[k]}">${ico('c-'+k)}</button>`).join('');
-    $('#ccbtn').textContent=f.cc;$('#ccbtn').setAttribute('aria-expanded',f.ccMenu);
+    $('#ccbtn').innerHTML=esc(f.cc)+ico('i-chev','i caret');$('#ccbtn').setAttribute('aria-expanded',f.ccMenu);
     $('#ccmenu').hidden=!f.ccMenu;
     $('#ccmenu').innerHTML=[S.cur,...CCS.filter(x=>x!==S.cur)].map(x=>`<button type="button" data-cc="${esc(x)}" aria-pressed="${x===f.cc}">${esc(x)}</button>`).join('');
     $('#famt').placeholder=f.cc+'0.00';
@@ -1242,7 +1248,7 @@ function openSheet(ex){
     <div class="thumbrow" id="photoArea" hidden></div>
     <p class="scanmsg" id="scanmsg" hidden aria-live="polite"></p>
     <div class="amtrow"><button type="button" class="ccbtn" id="ccbtn" aria-label="Currency" aria-haspopup="true"></button><input id="famt" class="field big" inputmode="decimal" value="${ex?((ex.cc?ex.oamt:ex.amt)/100).toFixed(2):''}" autocomplete="off" aria-label="Amount"><div class="ccmenu" id="ccmenu" hidden></div></div>
-    <div class="raterow" id="raterow" hidden><span id="rlab"></span><input id="frate" class="field" inputmode="decimal" value="${ex?.rate||lastRate(f.cc)}" autocomplete="off" aria-label="Exchange rate"><span class="conv" id="conv"></span></div>
+    <div class="raterow" id="raterow" hidden><span id="rlab"></span><input id="frate" class="field" inputmode="decimal" value="${ex?.rate||lastRate(f.cc)}" autocomplete="off" aria-label="Exchange rate"><span class="conv" id="conv"></span><span class="ratenote" id="rnote"></span></div>
     <div class="descrow"><input id="fdesc" class="field" type="text" placeholder="What for?" value="${esc(ex?.desc||'')}" autocomplete="off" aria-label="Description"><button type="button" class="catbtn" id="catbtn" aria-label="Choose icon" aria-haspopup="true"></button><div class="catmenu" id="catmenu" hidden></div></div>
     <div class="daterow"><label for="fdate">Date</label><input id="fdate" type="date" value="${ex?.date||today()}"></div>
     <div class="lbl"><span>Paid by<em id="paidName"></em></span></div><div class="pick" id="paidChips"></div>
@@ -1259,8 +1265,9 @@ function openSheet(ex){
     if(e.target.closest('#catbtn')){f.menu=!f.menu;f.ccMenu=false;draw();return}
     if(e.target.closest('#ccbtn')){f.ccMenu=!f.ccMenu;f.menu=false;draw();return}
     const cc=e.target.closest('[data-cc]');
-    if(cc){f.cc=cc.dataset.cc;f.ccMenu=false;if(f.cc!==S.cur&&!(ex&&ex.cc===f.cc))$('#frate').value=lastRate(f.cc);draw();if(f.cc!==S.cur&&!$('#frate').value)$('#frate').focus();return}
+    if(cc){f.cc=cc.dataset.cc;f.ccMenu=false;if(ex&&ex.cc===f.cc){$('#frate').value=ex.rate;f.rateMode='manual'}else{$('#frate').value='';f.rateMode='auto'}draw();autoRate();return}
     const ct=e.target.closest('[data-cat]');if(ct){f.cat=ct.dataset.cat;f.catSet=true;f.menu=false;draw();return}
+    if(e.target.closest('#useDay')){f.rateMode='auto';autoRate();return}
     if((f.menu&&!e.target.closest('#catmenu'))||(f.ccMenu&&!e.target.closest('#ccmenu'))){f.menu=f.ccMenu=false;draw()}
     if(e.target.closest('#camBtn')){$('#fphoto').click();return}
     if(e.target.closest('#thumb')){const src=$('#thumbImg').src;if(src)viewPhoto(src);return}
@@ -1274,8 +1281,27 @@ function openSheet(ex){
     try{f.newPhoto=await compress(file);draw()}catch(err){return toast('Couldn\'t read that photo')}
     scanReceipt(file,f,draw);};
   const unask=()=>{f.dupOk=false;const b=$('#duppanel');if(b)b.hidden=true};
-  $('#famt').oninput=()=>{f.touched.amt=true;unask();draw()};$('#frate').oninput=draw;
-  $('#fdate').oninput=()=>{f.touched.date=true;unask()};
+  /* the rate for the expense's own date is filled in; typing your own rate keeps it */
+  f.rateMode=ex&&ex.cc?'manual':'auto';
+  const rnote=h=>{const n=$('#rnote');if(n)n.innerHTML=h};
+  const autoRate=async()=>{
+    if(!foreign()){rnote('');return}
+    const cc=f.cc,d=$('#fdate').value||today(),when=shortDate(d);
+    if(f.rateMode!=='auto'){rnote(ISO[cc]&&ISO[S.cur]?`Your rate. <button type="button" id="useDay">Use the rate for ${when}</button>`:'');return}
+    if(!ISO[cc]||!ISO[S.cur]){rnote('Enter the rate yourself (no live rate for this currency).');return}
+    rnote(`Getting the rate for ${when}…`);
+    const j=await getRate(cc,S.cur,d);
+    if(!$('#eform')||f.cc!==cc||($('#fdate').value||today())!==d||f.rateMode!=='auto')return;
+    if(j&&!j.stale){$('#frate').value=String(+j.rate.toFixed(5));draw();
+      rnote(`Rate for ${when} from <a href="https://frankfurter.dev/" target="_blank" rel="noopener">Frankfurter</a>`)}
+    else{if(!$('#frate').value)$('#frate').value=lastRate(cc);draw();
+      rnote($('#frate').value?`Couldn't get the rate for ${when} (no signal?). Using your last rate: check it, or edit the expense later.`:`Couldn't get the rate for ${when}. Enter it yourself.`)}
+  };
+  f.autoRate=autoRate;
+  $('#famt').oninput=()=>{f.touched.amt=true;unask();draw()};
+  $('#frate').oninput=()=>{f.rateMode='manual';draw();autoRate()};
+  $('#fdate').oninput=()=>{f.touched.date=true;unask();autoRate()};
+  if(foreign())autoRate();                                         /* an existing expense in another currency: show where its rate came from */
   $('#fdesc').oninput=e=>{f.touched.desc=true;unask();if(!f.catSet){f.cat=matchCat(e.target.value)||null;draw()}};
   $('#eform').onsubmit=e=>{e.preventDefault();
     const a=toPence($('#famt').value),d=$('#fdesc').value.trim()||'Expense',dt=$('#fdate').value||today();
@@ -1500,10 +1526,11 @@ async function scanReceipt(file,f,draw){
 function applyScan(r,f,draw,show){
   const filled=[],cur=r.cur||S.cur,amtTxt=r.total?fmtCc(Math.round(r.total*100),cur):'';
   if(r.total&&!f.touched.amt){
-    if(cur!==f.cc){f.cc=cur;if(cur!==S.cur&&!$('#frate').value)$('#frate').value=lastRate(cur)}
+    if(cur!==f.cc){f.cc=cur;$('#frate').value='';f.rateMode='auto'}
     $('#famt').value=r.total.toFixed(2);filled.push(amtTxt);
   }
   if(r.date&&!f.touched.date){$('#fdate').value=r.date;filled.push(fmtDate(r.date))}
+  if(f.cc!==S.cur&&f.autoRate)f.autoRate();                        /* receipt in another currency: that day's rate */
   /* "What for?": the shop name, else a short description of the purchase, else the type of place */
   const what=r.merchant?titleCase(r.merchant):r.what?titleCase(r.what).replace(/^\p{Ll}/u,c=>c.toUpperCase()):r.cat&&r.cat!=='other'?CAT_NAME[r.cat]:'';
   if(what&&!f.touched.desc&&!$('#fdesc').value.trim()){$('#fdesc').value=what;filled.push(what)}
@@ -1517,7 +1544,7 @@ function applyScan(r,f,draw,show){
   const d0=amtNow>0?findDups(cand)[0]:null;
   if(d0)$('#scanmsg').insertAdjacentHTML('beforeend',`<span class="dupwarn">${ico('i-x','i tiny')}Looks like ${dupLine(d0.e)}. Check it isn't a duplicate.</span>`);
   if(differs){const m=$('#scanmsg');m.insertAdjacentHTML('beforeend',` <button type="button" class="ghost" id="useTotal">Use ${esc(amtTxt)}</button>`);
-    $('#useTotal').onclick=()=>{if(cur!==f.cc){f.cc=cur;if(cur!==S.cur&&!$('#frate').value)$('#frate').value=lastRate(cur)}$('#famt').value=r.total.toFixed(2);draw();$('#useTotal').remove()}}
+    $('#useTotal').onclick=()=>{if(cur!==f.cc){f.cc=cur;$('#frate').value='';f.rateMode='auto'}$('#famt').value=r.total.toFixed(2);draw();if(f.cc!==S.cur&&f.autoRate)f.autoRate();$('#useTotal').remove()}}
 }
 /* Phones often store portrait photos sideways plus an EXIF "orientation" tag. Most browsers apply it when drawing,
    some don't; read the tag and the stored size, and turn the picture upright ourselves when the browser hasn't. */
@@ -1617,6 +1644,8 @@ function exportCsv(){
 const REPO='https://github.com/theirishkiwi/Holisplit';
 /* newest first; the first entry's head is what returning users see in the banner after an update */
 const NEWS=[
+  {d:'2026-10-09',head:'Expenses in another currency get that day\'s rate',items:[
+    'Paid in another currency? Tap the currency next to the amount (now marked ⌄). The rate for the expense\'s date is filled in for you, and you can still type your own.']},
   {d:'2026-10-08',head:'Settle up in £, a clear offline banner, and a help guide',items:[
     'Settle up in £ (or another currency) at today\'s rate. Monzo links fill in the £ amount. Tap “Settle in €” on Settle up.',
     'A banner tells you when you\'re offline. You can still add expenses, and they sync as soon as you\'re back.',
