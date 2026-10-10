@@ -45,7 +45,11 @@ test('buttons depend on who you are: payer sees Pay, the person owed sees Remind
   assert.equal(row(), 'Remind on WhatsApp Mark paid');
   trip('£', 'a');
   P.run(`prefs.othersOpen=true;render()`);
-  assert.equal([...$$('.srow').find(r => r.textContent.includes('Sam')).querySelectorAll('.acts > *')].map(label).join(' '), 'Mark paid', 'someone else\'s debt');
+  const other = $$('.srow').find(r => r.textContent.includes('Sam'));
+  assert.equal([...other.querySelectorAll('.acts > *')].map(label).join(' '), 'Mark as paid', 'someone else\'s debt');
+  assert.equal(other.querySelector('[data-settle]').textContent.trim(), 'Paid?', 'reads as a question when you\'re not involved');
+  trip('£', 'c');
+  assert.equal($('[data-settle]').textContent.trim(), 'Paid', 'your own: no question mark');
 });
 
 test('Remind sends a WhatsApp message with the amount and how to pay', () => {
