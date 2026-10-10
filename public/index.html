@@ -634,10 +634,11 @@ const payee=u=>u.ids.map(person).find(hasPay)||person(u.ids[0]);
 const payerOf=u=>{const m=me();return u.ids.includes(m)?m:u.ids[0]};
 function rowActs(f,to,amt,i){
   const m=me(),pays=m&&f.ids.includes(m),owed=m&&to.ids.includes(m);
-  const done=`<button class="pill" data-settle="${i}" aria-label="Mark paid">${ico('i-check','i tiny')}Paid</button>`;
+  const done=(q='')=>`<button class="pill" data-settle="${i}" aria-label="Mark ${q?'as paid':'paid'}">${ico('i-check','i tiny')}Paid${q}</button>`;
   if(pays)return `<button class="pill pay" data-pay-i="${i}">Pay</button>`;
-  if(owed)return `<a class="pill ico" data-remind href="https://wa.me/?text=${encodeURIComponent(remindText(f,to,amt))}" target="_blank" rel="noopener" aria-label="Remind on WhatsApp">${ico('i-chat','i tiny')}</a>${done}`;
-  return (!m&&hasPay(payee(to))?`<button class="pill pay" data-pay-i="${i}">Pay</button>`:'')+done;
+  if(owed)return `<a class="pill ico" data-remind href="https://wa.me/?text=${encodeURIComponent(remindText(f,to,amt))}" target="_blank" rel="noopener" aria-label="Remind on WhatsApp">${ico('i-chat','i tiny')}</a>${done()}`;
+  /* a payment between other people: "Paid?" makes clear you'd only be recording it for them */
+  return (!m&&hasPay(payee(to))?`<button class="pill pay" data-pay-i="${i}">Pay</button>`:'')+done(m?'?':'');
 }
 function payLines(p,amt,payer){
   const d=(p&&p.pay)||{},out=[];
