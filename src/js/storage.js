@@ -29,5 +29,5 @@ let S=(prefs.cur&&!(prefs.trips.find(t=>t.id===prefs.cur)||{}).local&&loadTrip(p
 
 /* every user edit goes through save(): marks the trip as needing a push */
 let seq=0;
-const save=()=>{S.u=now();S.dirty=true;seq++;persist();kick()};
+const save=()=>{logChanges();S.u=now();S.dirty=true;seq++;persist();kick()};
 

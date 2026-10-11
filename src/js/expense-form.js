@@ -4,6 +4,8 @@ $('#add').onclick=()=>{if(!people().length){tab='ppl';render();$('#pmsg').textCo
 function openSheet(ex){
   if(ex&&tooNew(ex))return toast('Reload the app to edit this one: it was made with a newer version');
   const P=people(),isNew=!ex;
+  /* edit clash: remember the version you opened; if someone else's change arrives while the form is open, say so */
+  editing=ex?{id:ex.id,u:ex.u,was:eSnap(ex),check:()=>clashCheck()}:null;
   const lastPayer=P.some(p=>p.id===S.lastPayer)?S.lastPayer:P[0].id;
   /* cat: null = not chosen yet (grey); guessed from the description until the user picks one */
   const f={touched:{amt:!!ex,date:!!ex,desc:!!ex},cat:ex?.cat||null,catSet:!!ex,menu:false,ccMenu:false,cc:ex?.cc||S.cur,
@@ -70,6 +72,16 @@ function openSheet(ex){
       sum.textContent=!(a>0)?'Enter the total first':d===0?'Adds up':d>0?`${fmtCc(d,f.cc)} left to assign`:`${fmtCc(-d,f.cc)} too much`;
     }
   };
+  const clashCheck=()=>{
+    const box=$('#clash');if(!box||!editing||editing.id!==ex.id)return;
+    const cur=S.expenses.find(y=>y.id===ex.id);if(!cur||cur.u===editing.u)return;
+    const l=(S.log||[]).filter(z=>z.i===ex.id&&z.t>=editing.u-1).at(-1),who=l&&l.by&&l.by!==me()?esc(first(pname(l.by))):'Someone';
+    const what=cur.del?'':eChanges(editing.was,eSnap(cur));
+    box.hidden=false;
+    box.innerHTML=cur.del?`<b>${who} just deleted this expense.</b> <span>If you save, it comes back with your changes.</span> <button type="button" class="btn" id="useTheirs">Leave it deleted</button>`
+      :`<b>${who} just changed this expense${what.length?`: ${esc(what.join(', '))}`:''}.</b> <span>If you save, your version replaces theirs.</span> <button type="button" class="btn" id="useTheirs">Use theirs instead</button>`;
+    box.scrollIntoView&&box.scrollIntoView({block:'nearest'});
+  };
   sc.innerHTML=`<form class="sheet" id="eform" role="dialog" aria-label="${isNew?'Add':'Edit'} expense">
     <div class="sh"><button type="button" class="iconbtn" data-dismiss aria-label="Close">${ico('i-down')}</button><h3>${isNew?'New expense':'Edit expense'}</h3><button type="button" class="iconbtn" id="camBtn" aria-label="Scan or attach a receipt">${ico('i-cam')}</button></div>
     <input id="fphoto" type="file" accept="image/*" hidden>
@@ -85,6 +97,7 @@ function openSheet(ex){
     <div class="seg three splitmode" id="splitMode" role="group" aria-label="How to split"><button type="button" data-mode="eq">Equally</button><button type="button" data-mode="sh">By shares</button><button type="button" data-mode="am">By amount</button></div>
     <div class="splits" id="splits" hidden></div>
     <div class="each" id="each"></div>
+    <div class="clash" id="clash" hidden role="alert"></div>
     <p class="msg" id="emsg"></p>
     <div class="duppanel" id="duppanel" hidden aria-live="polite"></div>
     <div class="foot">${isNew?'':'<button type="button" class="btn danger" id="del">Delete</button>'}<button class="btn primary">${isNew?'Add':'Save'}</button></div>
@@ -117,6 +130,7 @@ function openSheet(ex){
       f.w[id]=v;if(!v)f.for.delete(id);draw();return}
     if(e.target.id==='allBtn'){f.for.size===P.length?f.for.clear():P.forEach(p=>f.for.add(p.id));draw();return}
     if(e.target.id==='del'){close();removeExp(ex)}
+    if(e.target.id==='useTheirs'){const cur=S.expenses.find(y=>y.id===ex.id);close();if(cur&&!cur.del)setTimeout(()=>openSheet(cur),50);else toast('Not saved: it was deleted');return}
   };
   $('#fphoto').onchange=async e=>{const file=e.target.files[0];if(!file)return;
     try{f.newPhoto=await compress(file);draw()}catch(err){return toast('Couldn\'t read that photo')}
@@ -197,6 +211,9 @@ function openSheet(ex){
     if(notdup&&notdup.length)rec.notdup=notdup;
     /* lv 2: needs a version of the app that knows uneven splits (older versions ask to reload rather than get it wrong) */
     if(split){rec.split=split;rec.lv=2}else if(ex?.split){rec.split=null;rec.lv=0}
+    /* pu: the version this edit started from, eb: who edited. Lets phones spot two edits made at the same time */
+    if(!isNew){rec.pu=editing&&editing.id===ex.id?editing.u:ex.u;rec.eb=me()||null;if(ex.del)rec.del=false}
+    editing=null;
     if(isNew)S.expenses.push({id,by:me()||null,...rec});else Object.assign(ex,rec);
     S.lastPayer=f.paidBy;open?.add(dt);
     save();close();tab='exp';render();toast(isNew?'Added':'Saved');

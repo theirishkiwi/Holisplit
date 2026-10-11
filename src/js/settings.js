@@ -51,7 +51,7 @@ function importData(txt){
   let d;
   try{d=JSON.parse(txt.slice(txt.indexOf('{'),txt.lastIndexOf('}')+1))}catch(e){}
   if(!d||!Array.isArray(d.expenses)){toast('That isn\'t import text');return false}
-  if(S.sample){S=blank();open=null}
+  if(S.sample){S=blank();open=null;snapReset()}
   const find=n=>people().find(p=>p.name.trim().toLowerCase()===String(n).trim().toLowerCase());
   const ensure=n=>find(n)||(S.people.push({id:uid(),name:String(n).trim(),c:nextColor(),u:now()}),find(n));
   (d.people||[]).forEach(ensure);

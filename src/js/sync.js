@@ -82,9 +82,10 @@ async function sync(){
 }
 /* merge a remote copy into the open trip; newest u wins */
 function mergeIn(t){
-  let added=0,changed=0;
+  let added=0,changed=0,clash=null;
   ['people','expenses'].forEach(k=>(t[k]||[]).forEach(x=>{
     const l=S[k].find(y=>y.id===x.id);
+    if(l&&k==='expenses'&&!isPay(l))clash=clashNote(l,x)||clash;
     if(!l){S[k].push(x);changed++;if(!x.del&&k==='expenses')added++}
     else if((x.u||0)>(l.u||0)){Object.assign(l,x);changed++}
   }));
@@ -92,8 +93,11 @@ function mergeIn(t){
   if(!S.pk&&t.pk)S.pk=t.pk;
   if((t.du||0)>(S.du||0)){S.del=t.del||null;S.delBy=t.delBy||null;S.du=t.du;changed++}
   if((t.sxu||0)>(S.sxu||0)){S.sx=t.sx||null;S.sxu=t.sxu;changed++}
-  fix(S);persist();
+  changed+=mergeLog(t);
+  fix(S);persist();snapReset();
   if(changed){if(open&&added)expenses().forEach(e=>open.add(e.date));render();if(added)toast(`${added} new from the group`)}
+  if(editing)editing.check();
+  if(clash&&!$('#eform'))toast(clash,{label:'See',fn:openActivity});
 }
 setInterval(()=>{if(!document.hidden)sync()},30000);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)sync()});

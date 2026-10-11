@@ -2,6 +2,10 @@
 const REPO='https://github.com/theirishkiwi/Holisplit';
 /* newest first; the first entry's head is what returning users see in the banner after an update */
 const NEWS=[
+  {d:'2026-10-11',head:'Uneven splits, an Activity list, and a warning when two people edit at once',items:[
+    'Split by shares (2 shares for someone who had twice as much) or by amount. Under the people on any expense.',
+    'Activity (the clock at the top) shows who added, changed or deleted what. A dot means something\'s new from the group.',
+    'Editing an expense someone else has just changed? The app tells you what they changed, and you can use their version.']},
   {d:'2026-10-09',head:'Expenses in another currency get that day\'s rate',items:[
     'Paid in another currency? Tap the currency next to the amount (now marked ⌄). The rate for the expense\'s date is filled in for you, and you can still type your own.']},
   {d:'2026-10-08',head:'Settle up in £, a clear offline banner, and a help guide',items:[
@@ -27,7 +31,11 @@ const HELP=[
     'Tap the icon next to “What for?” to pick a category. It\'s often guessed for you.',
     'Paid in another currency? Tap <b>€</b> next to the amount and enter the rate.',
     'Not an equal split? Under the people, choose <b>By shares</b> (e.g. 2 shares for someone who had twice as much) or <b>By amount</b> (type what each person\'s part was; it has to add up to the total).',
-    'Tap an expense to edit or delete it. Deleting can be undone.']],
+    'Tap an expense to edit or delete it. Deleting can be undone.',
+    'If someone changes an expense while you\'re editing it, you\'ll see what they changed and can use their version instead.']],
+  ['i-clock','Activity',[
+    'Tap the clock at the top to see who added, changed or deleted what, and when. Tap an entry to open that expense.',
+    'A dot on the clock means someone in the group has made changes since you last looked.']],
   ['i-cam','Receipt photos',[
     'Tap the camera on a new expense. The total, date, shop and type are filled in for you. Check them before saving.',
     'Photos are read by the app\'s Cloudflare AI and not kept there. You can turn this off in Settings.',

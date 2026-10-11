@@ -23,6 +23,7 @@ export const SCRIPTS = [
   'paying',           // payment links, bank details, "Did you pay?", the person menu
   'trip-delete-join', // deleting, restoring and erasing trips; joining by link
   'money',            // who owes whom: splits, couples, settle-up currency, fewest payments
+  'activity',         // the Activity list: who changed what, and when
   'views',            // drawing the Expenses, Settle up and Group tabs
   'events',           // buttons, taps and the toast
   'expense-form',     // the add / edit expense form

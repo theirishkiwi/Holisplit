@@ -1,6 +1,7 @@
 /* ---- Views ---- */
 let tab='exp',open=null,linking=null;
 function render(){
+  if(snap.trip!==S)snapReset();drawActDot();
   if(document.activeElement!==$('#trip'))$('#trip').value=S.name;
   $('#tripsub').textContent=tripSub();
   $('#sample').hidden=!S.sample;$('#newer').hidden=!(tooNew(S)||S.expenses.some(tooNew)||S.people.some(tooNew));$('#revoked').hidden=!S.revoked;

@@ -212,6 +212,33 @@ test('an uneven split, by shares and by amount, and back to equal', { timeout: 6
   } finally { await ctx.close(); }
 });
 
+test('two phones: a change while you\'re editing is flagged, and Activity shows who did what', { timeout: 60000 }, async () => {
+  const A = await phone(browser, server.url);
+  try {
+    await newTrip(A.page, { name: 'Lakes', cur: '£', people: ['Chris', 'Leanne'], me: 'Chris' });
+    await addExpense(A.page, { amount: 90, desc: 'Dinner', paidBy: 'Chris' });
+    await synced(A.page);
+    const B = await phone(browser, await inviteLink(A.page));
+    try {
+      await B.page.click('.mecard [data-me][aria-label="Leanne"]');
+      await A.page.locator('.row', { hasText: 'Dinner' }).click();                 // Chris is editing…
+      await B.page.locator('.row', { hasText: 'Dinner' }).click();                 // …while Leanne changes it
+      await B.page.fill('#famt', '96'); await B.page.click('#eform button.primary');
+      await synced(B.page);
+      await A.page.evaluate(() => sync());
+      await until(() => A.page.locator('#clash').isVisible(), 'clash warning');
+      assert.match(await text(A.page, '#clash'), /Leanne just changed this expense: amount £90\.00 → £96\.00/);
+      await A.page.click('#useTheirs');
+      await until(async () => (await A.page.inputValue('#famt')) === '96.00', 'their version');
+      await closeSheet(A.page);
+      assert.ok(await A.page.locator('#actBtn.dot').count(), 'dot for news from the group');
+      await A.page.click('#actBtn');
+      assert.match(await text(A.page, '#scrim'), /Leanne changed Dinner amount £90\.00 → £96\.00.*You added Dinner £90\.00/);
+      noErrors(A.page); noErrors(B.page);
+    } finally { await B.ctx.close(); }
+  } finally { await A.ctx.close(); }
+});
+
 test('Help, What\'s new and the GitHub link are in Settings', { timeout: 60000 }, async () => {
   const { ctx, page } = await phone(browser, server.url);
   try {

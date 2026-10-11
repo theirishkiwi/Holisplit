@@ -4,6 +4,7 @@ $('#trip').onchange=e=>{S.name=e.target.value.trim()||'Trip';S.nu=now();save();r
 $('#clearSample').onclick=newTrip;
 $('#reloadBtn').onclick=()=>location.reload();
 $('#gear').onclick=openSettings;
+$('#actBtn').onclick=openActivity;
 $('#cloud').onclick=()=>sync();
 $('#retryBtn').onclick=async()=>{const b=$('#retryBtn');b.disabled=true;b.textContent='Trying…';
   if(!scanAvail)await ping();await sync();b.disabled=false;b.textContent='Retry';
@@ -57,6 +58,6 @@ document.addEventListener('submit',e=>{
   if(e.target.id!=='pform')return;e.preventDefault();
   const n=$('#pname').value.trim();if(!n)return;
   if(people().some(p=>p.name.toLowerCase()===n.toLowerCase())){$('#pmsg').textContent=`${n} is already in the group.`;return}
-  if(S.sample){S=blank();open=null;persist();sync()}
+  if(S.sample){S=blank();open=null;persist();sync();snapReset()}
   S.people.push({id:uid(),name:n,c:nextColor(),u:now()});$('#pname').value='';save();render();$('#pname').focus();
 });

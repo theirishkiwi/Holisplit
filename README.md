@@ -12,7 +12,7 @@ written as separate parts in `src/`:
 
 - `src/index.html` – the page itself; `src/styles.css` – the look; `src/icons.svg` – the icons
 - `src/js/` – the script, one file per area: `core` (ids, dates, categories), `storage`, `sync` (and encryption), `trips`,
-  `paying`, `trip-delete-join`, `money` (splits, couples, settling), `views` (the three tabs), `events` (buttons and taps),
+  `paying`, `trip-delete-join`, `money` (splits, couples, settling), `activity`, `views` (the three tabs), `events` (buttons and taps),
   `expense-form`, `duplicates`, `settle-sheets`, `photos` (and receipt reading), `export`, `help`, `settings`, `sheets`
   (pop-ups), `start`
 
@@ -25,7 +25,7 @@ with its own storage, so testing never touches real trips.
 
 ## Tests
 npm install
-npm test      (builds the app, then 116 tests: split maths on its own (no browser), settling, couples, joint accounts, payments, currencies, amount entry, dates, worker sync, photos, link reset, encryption, delete and restore, closing screens, paid toggle, payment links, permanent delete, layout, receipt scanning, duplicate checks, offline, settling in another currency, help and what's new, day-of-expense rates)
+npm test      (builds the app, then 130 tests: split maths on its own (no browser), uneven splits, activity, edit clashes, settling, couples, joint accounts, payments, currencies, amount entry, dates, worker sync, photos, link reset, encryption, delete and restore, closing screens, paid toggle, payment links, permanent delete, layout, receipt scanning, duplicate checks, offline, settling in another currency, help and what's new, day-of-expense rates)
 
 ### Browser tests (the safety net)
 `npm run test:e2e` runs the main things a group does in a real browser (Chromium), against the real `worker.js` with in-memory storage and fake rates and receipt AI. They only tap, type and read the screen, never the app's internal code, so they keep working however the code is organised. They cover:
@@ -38,6 +38,8 @@ npm test      (builds the app, then 116 tests: split maths on its own (no browse
 - offline
 - the duplicate check
 - receipt scanning
+- uneven splits
+- two phones editing at once, and Activity
 - Help
 
 They run on GitHub (see `.github/workflows/test.yml`). To run them locally: `npm install --no-save playwright && npx playwright install chromium`.
@@ -112,6 +114,26 @@ and the reply is capped at 160 tokens (usually ~50), so a scan uses about 10-40 
 roughly 250-1,000 scans a day within the free allowance. Each trip is also capped at 100
 scans a day. The Worker returns the model's token usage with each scan, and Cloudflare's
 dashboard (AI > Workers AI) shows the exact neurons used.
+
+## Uneven splits
+On any expense, under the people: **Equally**, **By shares** (whole numbers, e.g. 2 for someone who had twice as much) or
+**By amount** (typed in the expense's currency; must add up to the total). Saved as `split: {m: 's'|'a', w: {personId: weight}}`
+and shared in proportion to the weights, so an expense in € on a £ trip splits by the € amounts typed.
+Leftover pennies go to whoever lost most in rounding (payer first on a tie, as with equal splits).
+
+Expenses with a split also carry `lv: 2`. A phone on an older version of the app that finds something newer than it
+understands (`lv` above its own) shows a "Reload to update" banner and won't edit that expense, instead of showing wrong amounts.
+
+## Activity
+Every change goes through `save()`, which compares the trip with the last save and adds an entry to the trip's log (`S.log`:
+who, what, when, and what changed, e.g. "amount £90.00 → £96.00"). The log is encrypted and synced with the trip; phones merge it
+by entry, newest 300 kept. Setting up (naming the trip, adding people) starts the log only once there's an expense.
+The clock at the top opens it; a dot shows changes by others since you last looked.
+
+## Edit clashes
+Editing an expense someone else changes meanwhile: the form says who changed what, with **Use theirs instead**. Saving keeps yours.
+Each edit records the version it started from (`pu`) and who made it (`eb`), so two edits made apart (e.g. both offline) are
+spotted when they meet: both people get a note saying whose version was kept (the later one, as before).
 
 ## Duplicate checks
 A duplicate always needs the **same amount** (to the cent, or the same foreign amount), plus one of:
