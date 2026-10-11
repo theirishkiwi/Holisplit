@@ -1,2 +1,4 @@
 node_modules/
 test-results/
+# built from src/ by npm run build
+public/index.html

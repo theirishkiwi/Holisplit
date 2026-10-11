@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f6f7fb">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Split">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/icon-192.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}[hidden]{display:none!important}</style>
+<title>Holiday Split</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700&family=Figtree:wght@400;500;600;700&display=swap">
+<style>
+<!-- @css styles.css -->
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <input id="trip" type="text" aria-label="Trip name">
+    <button class="iconbtn" id="cloud" aria-label="Sync now" hidden><svg class="i"><use href="#i-cloud"/></svg></button>
+    <button class="iconbtn" id="gear" aria-label="Settings"><svg class="i"><use href="#i-gear"/></svg></button>
+  </header>
+  <p class="tripsub" id="tripsub"></p>
+  <div class="banner" id="deleted" hidden><span id="delText"></span><button id="restoreBtn">Restore</button></div>
+  <div class="banner" id="revoked" hidden><span>This trip's link was reset. Open the new link from the group to keep syncing. Your changes will carry over.</span></div>
+  <div class="banner offline" id="offline" hidden role="status"><svg class="i"><use href="#i-cloudoff"/></svg><span id="offText"></span><button id="retryBtn">Retry</button></div>
+  <div class="banner news" id="news" hidden><span id="newsText"></span><span class="bb"><button id="newsSee">See</button><button id="newsX" aria-label="Dismiss">✕</button></span></div>
+  <div class="banner" id="sample" hidden><span>Example trip</span><button id="clearSample">Start fresh</button></div>
+  <nav class="tabs" role="tablist">
+    <button role="tab" data-tab="exp">Expenses</button>
+    <button role="tab" data-tab="bal">Settle up</button>
+    <button role="tab" data-tab="ppl">Group</button>
+  </nav>
+  <section id="exp"></section>
+  <section id="bal" hidden></section>
+  <section id="ppl" hidden></section>
+</div>
+<button class="fab" id="add" aria-label="Add expense"><svg class="i"><use href="#i-plus"/></svg></button>
+<div class="scrim" id="scrim" hidden></div>
+<div class="toast" id="toast" hidden></div>
+
+<!-- @include icons.svg -->
+
+
+<script>
+<!-- @js -->
+</script>
+</body>
+</html>

@@ -1,12 +1,31 @@
 # Holiday Split
 
-public/            the app (index.html), offline support (sw.js), icons and manifest
-worker.js          sync API (/api/ping, /api/trip/<id>)
-wrangler.jsonc     config: static assets + KV namespace "TRIPS"
+src/               the app's source, in parts (see "Code layout" below)
+build.mjs          joins src/ into public/index.html (`npm run build`)
+public/            what's served: the built app (index.html), offline support (sw.js), icons and manifest
+worker.js          the server: sync, photos, receipt reading, exchange rates
+wrangler.jsonc     Cloudflare config: static assets, storage ("TRIPS"), AI; previews use separate storage
+
+## Code layout
+The app is still served as one file, `public/index.html` (quick to open, and it works offline from one download), but it's
+written as separate parts in `src/`:
+
+- `src/index.html` – the page itself; `src/styles.css` – the look; `src/icons.svg` – the icons
+- `src/js/` – the script, one file per area: `core` (ids, dates, categories), `storage`, `sync` (and encryption), `trips`,
+  `paying`, `trip-delete-join`, `money` (splits, couples, settling), `views` (the three tabs), `events` (buttons and the
+  expense form), `duplicates`, `settle-sheets`, `photos` (and receipt reading), `export`, `help`, `settings`, `sheets`
+  (pop-ups), `start`
+
+`npm run build` joins them, in the order listed in `build.mjs`, into `public/index.html`. That file is made, not edited, so
+it isn't in git: Cloudflare builds it on each deploy, and the tests build it before they run. The parts share one scope,
+so a function in one file can use a function in another.
+
+Preview builds: every branch other than main gets its own test address (`<branch>-holisplit.<account>.workers.dev`)
+with its own storage, so testing never touches real trips.
 
 ## Tests
 npm install
-npm test      (111 tests: split maths, settling, couples, joint accounts, payments, currencies, amount entry, dates, worker sync, photos, link reset, encryption, delete and restore, closing screens, paid toggle, payment links, permanent delete, layout, receipt scanning, duplicate checks, offline, settling in another currency, help and what's new, day-of-expense rates)
+npm test      (builds the app, then 116 tests: split maths on its own (no browser), settling, couples, joint accounts, payments, currencies, amount entry, dates, worker sync, photos, link reset, encryption, delete and restore, closing screens, paid toggle, payment links, permanent delete, layout, receipt scanning, duplicate checks, offline, settling in another currency, help and what's new, day-of-expense rates)
 
 ### Browser tests (the safety net)
 `npm run test:e2e` runs the main things a group does in a real browser (Chromium), against the real `worker.js` with in-memory storage and fake rates and receipt AI. They only tap, type and read the screen, never the app's internal code, so they keep working however the code is organised. They cover:
@@ -55,7 +74,7 @@ If the couple shares money, e.g. a joint Monzo account, switch on **Joint accoun
 ## Help and What's new
 - **Help** (Settings → Help, or "How it works" on an empty trip) is a short guide built into the app, so it works offline.
 - **What's new:** after an update, people who've used the app before see a one-line banner. **See** opens the list of changes. New users don't see it.
-- **Adding to it:** add an entry at the top of `NEWS` in `public/index.html` with each change worth telling the group about. The date of the newest entry is also the "Updated" date in Settings.
+- **Adding to it:** add an entry at the top of `NEWS` in `src/js/help.js` with each change worth telling the group about. The date of the newest entry is also the "Updated" date in Settings.
 
 ## Expenses in another currency
 Tap the currency next to the amount (marked ⌄) and pick e.g. € on a £ trip.
