@@ -48,7 +48,7 @@ They run on GitHub (see `.github/workflows/test.yml`). To run them locally: `npm
 1. npx wrangler login
 2. npx wrangler kv namespace create TRIPS
    Paste the printed id into wrangler.jsonc
-3. Set "name" in wrangler.jsonc to your existing Worker's name
+3. "name" in wrangler.jsonc must match the Worker's name in Cloudflare (holisplit)
 4. npx wrangler deploy
 
 ## Privacy

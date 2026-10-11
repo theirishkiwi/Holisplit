@@ -1,6 +1,6 @@
 {
-  // Set "name" to your existing Worker's name so it keeps the same workers.dev address
-  "name": "holiday-split",
+  // Must match the Worker's name in Cloudflare (Workers & Pages → holisplit), which Cloudflare's builds use
+  "name": "holisplit",
   "main": "worker.js",
   "compatibility_date": "2025-09-01",
   // The normal workers.dev address, plus a separate test address for each branch's preview build
