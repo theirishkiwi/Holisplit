@@ -3,6 +3,9 @@
   "name": "holiday-split",
   "main": "worker.js",
   "compatibility_date": "2025-09-01",
+  // The normal workers.dev address, plus a separate test address for each branch's preview build
+  "workers_dev": true,
+  "preview_urls": true,
   "assets": {
     "directory": "./public",
     "binding": "ASSETS"
