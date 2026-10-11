@@ -365,3 +365,4 @@ button.actrow:hover{background:var(--tile)}
 .actstrip.new>svg.i,.actstrip.new small,.actstrip.new .caret{color:var(--soft-ink)}
 #rgo{flex:1}
 .newlink{margin:0 2px;color:var(--muted);font-size:.92rem;line-height:1.45}
+.seg.nf{margin-top:0;background:var(--tile)}.seg.nf button{font-size:.88rem}

@@ -12,6 +12,7 @@ function openSettings(){
       ${scanAvail?`<div><label for="sscan">Read receipt photos<small>Fills in total, date and type from a receipt photo. Read by the app's Cloudflare AI, not stored.</small></label><input id="sscan" class="sw" type="checkbox" role="switch" ${prefs.scan!==false?'checked':''}></div>`:''}
       <div><label for="ssync">Sync with group<small class="status">${status}</small></label><input id="ssync" class="sw" type="checkbox" role="switch" ${prefs.sync?'checked':''} ${syncAvail?'':'disabled'}></div>
     </div>
+    ${notifBlock()}
     ${people().length?`<div class="set"><div><label>Payment details<small>How the group pays you: Monzo, Revolut, Starling or bank</small></label><button class="btn primary" data-paydetails="${me()||people()[0].id}">Edit</button></div></div>`:''}
     <div class="set"><div class="col"><label for="simp">Import expenses<small>Paste import text into this trip</small></label>
       <textarea id="simp" class="field" rows="3" placeholder="Paste here" autocomplete="off"></textarea>
@@ -42,10 +43,12 @@ function openSettings(){
     const rr=e.target.closest('[data-restore]');if(rr){close();restoreTrip(rr.dataset.restore);return}
     const er=e.target.closest('[data-erase]');if(er){openErase(er.dataset.erase);return}
     if(e.target.closest('#sreset')){openReset();return}
+    const nf=e.target.closest('[data-nf]');if(nf){notif().scope=nf.dataset.nf;savePrefs();sc.querySelectorAll('[data-nf]').forEach(b=>b.setAttribute('aria-pressed',b===nf));return}
     if(e.target.closest('#simpgo')){const t=$('#simp').value;if(importData(t))close()}
   };
   $('#scur').onchange=e=>{S.cur=e.target.value.trim()||'£';S.nu=now();save();render()};
   if($('#sscan'))$('#sscan').onchange=e=>{prefs.scan=e.target.checked;savePrefs()};
+  if($('#snotif'))$('#snotif').onchange=e=>{setNotif(e.target.checked)};
   $('#ssync').onchange=e=>{prefs.sync=e.target.checked;savePrefs();setNet(syncOn()?'sync':'off');render();sync()};
 }
 /* Reset (or first encrypt) the invite link: its own screen, so it can't be tapped by accident */

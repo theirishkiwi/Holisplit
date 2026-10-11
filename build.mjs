@@ -32,6 +32,7 @@ export const SCRIPTS = [
   'photos',           // receipt photos and receipt reading
   'export',           // spreadsheet export
   'help',             // Help, What's new, About
+  'notify',           // notifications: the Settings switch, signing up with the server
   'settings',         // Settings and import
   'sheets',           // pop-up sheets: open, close, swipe down
   'start',            // runs last: starts the app
