@@ -50,13 +50,22 @@ function toPence(v){
 }
 const nextColor=()=>{const used=people().map(p=>p.c);for(let i=0;i<COLORS.length;i++)if(!used.includes(i))return i;return people().length%COLORS.length};
 
-/* Equal split in pence; leftover pennies go to the payer first, then list order */
+/* Each person's share in pence. Equal unless the expense has e.split = {m:'s'|'a', w:{id:weight}}:
+   by shares (m 's', w = 1, 2, …) or by amount (m 'a', w = cents in the expense's own currency, adding up to its total).
+   Either way the trip amount is shared in proportion to w, so a € expense on a £ trip splits by the amounts typed in €.
+   Leftover pennies go to whoever lost the most in rounding; on a tie (always, for an equal split) the payer first, then list order. */
 function shares(e){
   if(!e.for||!e.for.length)return {[e.paidBy]:e.amt};
   const ids=[...e.for].sort((x,y)=>(y===e.paidBy)-(x===e.paidBy));
-  const base=Math.floor(e.amt/ids.length);let r=e.amt-base*ids.length;
-  const out={};ids.forEach(id=>{out[id]=base+(r-->0?1:0)});return out;
+  const sw=e.split&&e.split.w;let wt=id=>sw?Math.max(0,+sw[id]||0):1;
+  let W=ids.reduce((s,id)=>s+wt(id),0);if(!(W>0)){wt=()=>1;W=ids.length}
+  const out={},rest=[];let left=e.amt;
+  ids.forEach((id,i)=>{const x=e.amt*wt(id)/W,f=Math.floor(x);out[id]=f;left-=f;rest.push([x-f,i,id])});
+  rest.sort((a,b)=>b[0]-a[0]||a[1]-b[1]);
+  for(let k=0;left>0;k++,left--)out[rest[k%rest.length][2]]++;
+  return out;
 }
+const uneven=e=>!!(e.split&&e.split.w);
 function balances(){
   const b={};people().forEach(p=>b[p.id]={paid:0,share:0});
   expenses().forEach(e=>{

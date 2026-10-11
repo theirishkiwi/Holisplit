@@ -24,7 +24,8 @@ export const SCRIPTS = [
   'trip-delete-join', // deleting, restoring and erasing trips; joining by link
   'money',            // who owes whom: splits, couples, settle-up currency, fewest payments
   'views',            // drawing the Expenses, Settle up and Group tabs
-  'events',           // buttons and the add/edit expense form
+  'events',           // buttons, taps and the toast
+  'expense-form',     // the add / edit expense form
   'duplicates',       // spotting the same expense added twice
   'settle-sheets',    // settle-up currency and record-a-payment forms
   'photos',           // receipt photos and receipt reading

@@ -12,8 +12,8 @@ written as separate parts in `src/`:
 
 - `src/index.html` – the page itself; `src/styles.css` – the look; `src/icons.svg` – the icons
 - `src/js/` – the script, one file per area: `core` (ids, dates, categories), `storage`, `sync` (and encryption), `trips`,
-  `paying`, `trip-delete-join`, `money` (splits, couples, settling), `views` (the three tabs), `events` (buttons and the
-  expense form), `duplicates`, `settle-sheets`, `photos` (and receipt reading), `export`, `help`, `settings`, `sheets`
+  `paying`, `trip-delete-join`, `money` (splits, couples, settling), `views` (the three tabs), `events` (buttons and taps),
+  `expense-form`, `duplicates`, `settle-sheets`, `photos` (and receipt reading), `export`, `help`, `settings`, `sheets`
   (pop-ups), `start`
 
 `npm run build` joins them, in the order listed in `build.mjs`, into `public/index.html`. That file is made, not edited, so

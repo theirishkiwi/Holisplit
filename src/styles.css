@@ -319,3 +319,18 @@ a.paidbtn{text-decoration:none;display:inline-block}
 .btn.wide{width:100%;margin-top:14px}
 .toast{display:flex;align-items:center;gap:14px}
 .toast button{border:0;background:none;color:var(--bg);font-weight:700;text-decoration:underline;padding:0}
+/* uneven splits */
+.seg.three{grid-template-columns:repeat(3,1fr);margin-top:2px}
+.seg.three button{font-size:.88rem;padding:7px 0}
+.splits{background:var(--card);border-radius:14px;padding:4px 12px}
+.srow2{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)}
+.srow2 .sn{flex:1;min-width:0;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.step{display:inline-flex;align-items:center;gap:2px}
+.step button{border:0;background:var(--tile);color:var(--fg);width:34px;height:34px;border-radius:10px;font:600 1.15rem/1 var(--body)}
+.step b{min-width:28px;text-align:center;font:700 1rem var(--display)}
+.srow2 .sa{min-width:74px;text-align:right;color:var(--muted);font-size:.9rem}
+.amin{display:inline-flex;align-items:center;gap:4px;color:var(--muted);font-weight:600}
+.amin input{border:0;width:96px;padding:7px 9px;border-radius:10px;text-align:right;background:var(--tile);font:600 1rem var(--body);color:var(--fg)}
+.ssum{margin:8px 0 4px;text-align:center;color:var(--muted);font-size:.85rem;font-weight:600}
+.ssum.ok{color:var(--pos)}.ssum.off{color:var(--neg)}
+.who .uneven{font-size:.72rem;font-weight:600;color:var(--muted);background:var(--tile);border-radius:6px;padding:0 5px}

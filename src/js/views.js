@@ -3,7 +3,7 @@ let tab='exp',open=null,linking=null;
 function render(){
   if(document.activeElement!==$('#trip'))$('#trip').value=S.name;
   $('#tripsub').textContent=tripSub();
-  $('#sample').hidden=!S.sample;$('#revoked').hidden=!S.revoked;
+  $('#sample').hidden=!S.sample;$('#newer').hidden=!(tooNew(S)||S.expenses.some(tooNew)||S.people.some(tooNew));$('#revoked').hidden=!S.revoked;
   document.querySelectorAll('.tabs button').forEach(b=>b.setAttribute('aria-selected',b.dataset.tab===tab));
   ['exp','bal','ppl'].forEach(id=>$('#'+id).hidden=id!==tab);
   $('#add').hidden=tab!=='exp'||!!S.del;
@@ -65,7 +65,7 @@ function rExp(){
     h+=`<div class="day${isOpen?' open':''}"><button class="dayh" data-day="${d}" aria-expanded="${isOpen}"><span class="d">${fmtDate(d)}</span><span class="s">${money(de.filter(e=>!isPay(e)).reduce((s,e)=>s+e.amt,0))}</span>${ico('i-chev')}</button>`;
     if(isOpen)h+='<ul class="items">'+de.map(e=>isPay(e)
       ?`<li><button class="row" data-pay="${e.id}"><span class="ic" style="background:${PAY_COL}">${ico('i-pay')}</span><span class="main"><div class="t">${esc(pname(e.paidBy))} paid ${esc(pname(e.for[0]))}</div><div class="who">${av(e.paidBy,'sm')}${ico('i-arrow')}${av(e.for[0],'sm')}<span>Payment</span></div></span><span class="rt"><span class="amt">${e.cc?fmtCc(e.oamt,e.cc):money(e.amt)}</span>${myLine(e)}</span></button></li>`
-      :`<li><button class="row" data-edit="${e.id}"><span class="ic" style="background:${CAT_COL[e.cat]}">${ico('c-'+e.cat)}</span><span class="main"><div class="t">${esc(e.desc)}</div><div class="who"><span>${e.paidBy===me()?'You':esc(first(pname(e.paidBy)))} paid</span><span class="sep">·</span>${e.for.length===everyone?'<span>everyone</span>':stack(e.for)}${e.cc?`<span class="orig">${fmtCc(e.oamt,e.cc)}</span>`:''}${e.photo?ico('i-cam','i tiny'):''}</div></span><span class="rt"><span class="amt">${money(e.amt)}</span>${myLine(e)}</span></button></li>`).join('')+'</ul>';
+      :`<li><button class="row" data-edit="${e.id}"><span class="ic" style="background:${CAT_COL[e.cat]}">${ico('c-'+e.cat)}</span><span class="main"><div class="t">${esc(e.desc)}</div><div class="who"><span>${e.paidBy===me()?'You':esc(first(pname(e.paidBy)))} paid</span><span class="sep">·</span>${e.for.length===everyone?'<span>everyone</span>':stack(e.for)}${uneven(e)?'<span class="uneven">uneven</span>':''}${e.cc?`<span class="orig">${fmtCc(e.oamt,e.cc)}</span>`:''}${e.photo?ico('i-cam','i tiny'):''}</div></span><span class="rt"><span class="amt">${money(e.amt)}</span>${myLine(e)}</span></button></li>`).join('')+'</ul>';
     h+='</div>';
   });
   $('#exp').innerHTML=h;

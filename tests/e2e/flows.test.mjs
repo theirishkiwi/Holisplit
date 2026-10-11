@@ -180,6 +180,38 @@ test('a receipt photo fills in the total and shop', { timeout: 60000 }, async ()
   } finally { await ctx.close(); }
 });
 
+test('an uneven split, by shares and by amount, and back to equal', { timeout: 60000 }, async () => {
+  const { ctx, page } = await phone(browser, server.url);
+  try {
+    await newTrip(page, { name: 'Tuscany', cur: '€', people: ['Chris', 'Leanne', 'David', 'Sarah'], me: 'Chris' });
+    await page.click('#add'); await page.fill('#famt', '120'); await page.fill('#fdesc', 'Cleaning');
+    await page.click('[data-mode="sh"]');
+    await page.locator('#splits [data-d="1"]').first().click();                 // Chris: 2 shares
+    assert.match(await text(page, '#splits'), /Chris − 2 \+ €48\.00 .*Leanne − 1 \+ €24\.00/);
+    await page.click('#eform button.primary');
+    const row = () => page.locator('.row', { hasText: 'Cleaning' });
+    assert.match(await row().innerText(), /uneven[\s\S]*you're owed €72\.00/);
+    await row().click();
+    assert.equal(await page.getAttribute('[data-mode="sh"]', 'aria-pressed'), 'true', 'opens as it was saved');
+    await page.click('[data-mode="am"]');
+    for (const [i, v] of ['50', '30', '20', '10'].entries()) await page.locator('[data-am]').nth(i).fill(v);
+    assert.match(await text(page, '#ssum'), /€10\.00 left to assign/);
+    await page.click('#eform button.primary');
+    assert.match(await text(page, '#emsg'), /add up to €110\.00, not €120\.00/);
+    await page.locator('[data-am]').nth(3).fill('20');
+    assert.match(await text(page, '#ssum'), /Adds up/);
+    await page.click('#eform button.primary');
+    assert.match(await row().innerText(), /you're owed €70\.00/);
+    const rows = await settleRows(page);
+    assert.ok(rows.some(r => /Leanne . You €30\.00/.test(r)), rows.join(' | '));
+    await tab(page, 'Expenses');
+    await row().click(); await page.click('[data-mode="eq"]'); await page.click('#eform button.primary');
+    assert.doesNotMatch(await row().innerText(), /uneven/);
+    assert.match(await row().innerText(), /you're owed €90\.00/);
+    noErrors(page);
+  } finally { await ctx.close(); }
+});
+
 test('Help, What\'s new and the GitHub link are in Settings', { timeout: 60000 }, async () => {
   const { ctx, page } = await phone(browser, server.url);
   try {

@@ -64,3 +64,30 @@ test('settle-up currency: trip amounts shown and paid in £ at the trip\'s rate'
   assert.equal(run('smoney(3000)'), '£25.43');
   assert.equal(run('rateTxt()'), '€1 = £0.8476');
 });
+
+test('uneven split by shares: 2 shares costs twice 1 share, pennies still add up', () => {
+  const { run } = logic();
+  assert.deepEqual(plain(run(`shares({amt:12000,paidBy:'c',for:['c','l','d','s'],split:{m:'s',w:{c:2,l:1,d:1,s:1}}})`)), { c: 4800, l: 2400, d: 2400, s: 2400 });
+  const odd = plain(run(`shares({amt:1000,paidBy:'a',for:['a','b'],split:{m:'s',w:{a:1,b:2}}})`));
+  assert.deepEqual(odd, { a: 333, b: 667 }, 'the penny goes to whoever lost most in rounding');
+});
+
+test('uneven split by amount: each pays exactly what was typed; in another currency, in proportion', () => {
+  const { run } = logic();
+  assert.deepEqual(plain(run(`shares({amt:12000,paidBy:'c',for:['c','l','d','s'],split:{m:'a',w:{c:5000,l:3000,d:2000,s:2000}}})`)), { c: 5000, l: 3000, d: 2000, s: 2000 });
+  // €100 typed as €70 + €30, the expense worth £85 on a £ trip
+  assert.deepEqual(plain(run(`shares({amt:8500,cc:'€',oamt:10000,paidBy:'c',for:['c','l'],split:{m:'a',w:{c:7000,l:3000}}})`)), { c: 5950, l: 2550 });
+  // never more or less than the total, whatever the numbers
+  for (let amt = 1; amt < 400; amt += 37) {
+    const sh = run(`shares({amt:${amt},paidBy:'a',for:['a','b','c'],split:{m:'s',w:{a:3,b:5,c:7}}})`);
+    assert.equal(Object.values(sh).reduce((s, v) => s + v, 0), amt);
+  }
+});
+
+test('an older or broken split falls back to equal rather than losing money', () => {
+  const { run } = logic();
+  assert.deepEqual(plain(run(`shares({amt:900,paidBy:'a',for:['a','b','c'],split:{m:'s',w:{}}})`)), { a: 300, b: 300, c: 300 });
+  assert.deepEqual(plain(run(`shares({amt:900,paidBy:'a',for:['a','b','c'],split:null})`)), { a: 300, b: 300, c: 300 });
+  assert.equal(run(`tooNew({lv:2})`), false);
+  assert.equal(run(`tooNew({lv:3})`), true, 'made by a newer version');
+});

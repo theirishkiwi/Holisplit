@@ -26,6 +26,7 @@ const HELP=[
     'Tap <b>+</b>. Enter the amount, what it was for, who paid and who it\'s split between (everyone by default).',
     'Tap the icon next to “What for?” to pick a category. It\'s often guessed for you.',
     'Paid in another currency? Tap <b>€</b> next to the amount and enter the rate.',
+    'Not an equal split? Under the people, choose <b>By shares</b> (e.g. 2 shares for someone who had twice as much) or <b>By amount</b> (type what each person\'s part was; it has to add up to the total).',
     'Tap an expense to edit or delete it. Deleting can be undone.']],
   ['i-cam','Receipt photos',[
     'Tap the camera on a new expense. The total, date, shop and type are filled in for you. Check them before saving.',

@@ -5,6 +5,10 @@ const uid=()=>Math.random().toString(36).slice(2,10);
 const newId=()=>{const a=new Uint8Array(20);crypto.getRandomValues(a);return Array.from(a,b=>(b%36).toString(36)).join('')};
 const TRIP_ID=/^[a-z0-9]{12,40}$/;
 const now=()=>Date.now();
+/* Data version. Anything saved in a way older versions would get wrong carries lv (e.g. uneven splits are lv 2);
+   a phone running an older version then asks to reload instead of showing wrong amounts. */
+const APP_LV=2;
+const tooNew=x=>(x&&x.lv||0)>APP_LV;
 /* dates are the phone's local calendar day (toISOString would give UTC, i.e. yesterday just after midnight in Italy) */
 const ymd=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 const today=()=>ymd(new Date());
