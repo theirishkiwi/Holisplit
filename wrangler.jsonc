@@ -20,5 +20,17 @@
       "binding": "TRIPS",
       "id": "89724cbf43f3482293324be801af3893"
     }
-  ]
+  ],
+  // Preview builds (any branch other than main) use their own storage, so testing never touches real trips
+  "previews": {
+    "kv_namespaces": [
+      {
+        "binding": "TRIPS",
+        "id": "55408dfa05ca4a5db5d00c7703f5ad41"
+      }
+    ],
+    "ai": {
+      "binding": "AI"
+    }
+  }
 }
