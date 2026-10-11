@@ -170,11 +170,12 @@ async function handleRate(env, a, b, date) {
 
 // Keep only the fields the app uses
 function clean(t) {
-  const { v, id, name, cur, nu, people, expenses, u, prev, del, delBy, du, sx, sxu } = t;
+  const { v, id, name, cur, nu, people, expenses, u, prev, del, delBy, du, sx, sxu, log } = t;
   const out = { v, id, name, cur, nu: nu || 0, people: people || [], expenses: expenses || [], u: u || 0 };
   if (typeof prev === 'string') out.prev = prev;
   if (du) { out.del = del || null; out.delBy = delBy || null; out.du = du; }
   if (sxu) { out.sx = sx && typeof sx === 'object' ? sx : null; out.sxu = sxu; }
+  if (Array.isArray(log)) out.log = log.filter(x => x && typeof x.id === 'string');
   return out;
 }
 function valid(t) {
@@ -194,6 +195,10 @@ function merge(base, inc) {
   if ((inc.nu || 0) > out.nu) { out.name = inc.name; out.cur = inc.cur; out.nu = inc.nu; }
   if ((inc.du || 0) > (out.du || 0)) { out.del = inc.del || null; out.delBy = inc.delBy || null; out.du = inc.du; }
   if ((inc.sxu || 0) > (out.sxu || 0)) { out.sx = inc.sx && typeof inc.sx === 'object' ? inc.sx : null; out.sxu = inc.sxu; }
+  if (Array.isArray(inc.log)) {             // activity: every entry from both, newest 300
+    const have = new Set((out.log || []).map(x => x.id));
+    out.log = [...(out.log || []), ...inc.log.filter(x => x && typeof x.id === 'string' && !have.has(x.id))].sort((a, b) => (a.t || 0) - (b.t || 0)).slice(-300);
+  }
   out.u = Math.max(out.u, inc.u || 0);
   return out;
 }

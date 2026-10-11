@@ -74,3 +74,33 @@ test('worker: move refuses a new trip that does not continue the old one', async
   assert.equal(r.status, 400);
   assert.notEqual(env.TRIPS.m.get('trip:' + a), '{"revoked":true}', 'someone else\'s trip is untouched');
 });
+
+test('Settings: reset link is at the bottom, next to Delete, and opens its own screen before anything happens', async () => {
+  const { default: worker } = await import(path.join(__dirname, '..', 'worker.js'));
+  const env = { TRIPS: kv() };
+  const A = load({ fetch: workerFetch(worker, env) });
+  try {
+    await tick();
+    A.run(`S=blank();S.name='Family';S.people.push({id:'p1',name:'Chris',c:0,u:1});save()`);
+    await A.run('sync()');
+    const id = A.run('S.id'), $ = s => A.w.document.querySelector(s);
+    A.run(`document.querySelector('#gear').click()`);
+    const sets = [...A.w.document.querySelectorAll('#scrim .set')];
+    const last = sets.at(-1);
+    assert.ok(last.querySelector('#sreset') && last.querySelector('#sdel'), 'reset and delete share the last section');
+    A.run(`document.querySelector('#sreset').click()`);
+    assert.match($('#scrim h3').textContent, /Reset the invite link\?/);
+    assert.match($('#scrim .warnbox').textContent, /current link stops working/);
+    A.run(`document.querySelector('#rcancel').click()`);
+    assert.equal($('#scrim').hidden, true, 'Cancel closes');
+    assert.equal(A.run('S.id'), id, 'nothing reset');
+    // Reset for real: a screen to send the new link straight away
+    A.run(`document.querySelector('#gear').click()`);A.run(`document.querySelector('#sreset').click()`);
+    A.run(`document.querySelector('#rgo').click()`);
+    for (let i = 0; i < 50 && !$('#nlWa'); i++) await tick(20);
+    const newId = A.run('S.id');
+    assert.notEqual(newId, id, 'new link');
+    assert.match($('#scrim h3').textContent, /New link ready/);
+    assert.match(decodeURIComponent($('#nlWa').getAttribute('href')), new RegExp(`New link for \\*Family\\*.*#${newId}\\.`, 's'));
+  } finally { A.w.close(); }
+});

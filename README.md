@@ -1,18 +1,54 @@
 # Holiday Split
 
-public/            the app (index.html), offline support (sw.js), icons and manifest
-worker.js          sync API (/api/ping, /api/trip/<id>)
-wrangler.jsonc     config: static assets + KV namespace "TRIPS"
+src/               the app's source, in parts (see "Code layout" below)
+build.mjs          joins src/ into public/index.html (`npm run build`)
+public/            what's served: the built app (index.html), offline support (sw.js), icons and manifest
+worker.js          the server: sync, photos, receipt reading, exchange rates
+wrangler.jsonc     Cloudflare config: static assets, storage ("TRIPS"), AI; previews use separate storage
+
+## Code layout
+The app is still served as one file, `public/index.html` (quick to open, and it works offline from one download), but it's
+written as separate parts in `src/`:
+
+- `src/index.html` – the page itself; `src/styles.css` – the look; `src/icons.svg` – the icons
+- `src/js/` – the script, one file per area: `core` (ids, dates, categories), `storage`, `sync` (and encryption), `trips`,
+  `paying`, `trip-delete-join`, `money` (splits, couples, settling), `activity`, `views` (the three tabs), `events` (buttons and taps),
+  `expense-form`, `duplicates`, `settle-sheets`, `photos` (and receipt reading), `export`, `help`, `settings`, `sheets`
+  (pop-ups), `start`
+
+`npm run build` joins them, in the order listed in `build.mjs`, into `public/index.html`. That file is made, not edited, so
+it isn't in git: Cloudflare builds it on each deploy, and the tests build it before they run. The parts share one scope,
+so a function in one file can use a function in another.
+
+Preview builds: every branch other than main gets its own test address (`<branch>-holisplit.<account>.workers.dev`)
+with its own storage, so testing never touches real trips.
 
 ## Tests
 npm install
-npm test      (111 tests: split maths, settling, couples, joint accounts, payments, currencies, amount entry, dates, worker sync, photos, link reset, encryption, delete and restore, closing screens, paid toggle, payment links, permanent delete, layout, receipt scanning, duplicate checks, offline, settling in another currency, help and what's new, day-of-expense rates)
+npm test      (builds the app, then 130 tests: split maths on its own (no browser), uneven splits, activity, edit clashes, settling, couples, joint accounts, payments, currencies, amount entry, dates, worker sync, photos, link reset, encryption, delete and restore, closing screens, paid toggle, payment links, permanent delete, layout, receipt scanning, duplicate checks, offline, settling in another currency, help and what's new, day-of-expense rates)
+
+### Browser tests (the safety net)
+`npm run test:e2e` runs the main things a group does in a real browser (Chromium), against the real `worker.js` with in-memory storage and fake rates and receipt AI. They only tap, type and read the screen, never the app's internal code, so they keep working however the code is organised. They cover:
+- a new trip
+- two phones sharing a link
+- a joint-account couple
+- paying with Undo
+- settling in £
+- the day's exchange rate
+- offline
+- the duplicate check
+- receipt scanning
+- uneven splits
+- two phones editing at once, and Activity
+- Help
+
+They run on GitHub (see `.github/workflows/test.yml`). To run them locally: `npm install --no-save playwright && npx playwright install chromium`.
 
 ## Deploy (one time)
 1. npx wrangler login
 2. npx wrangler kv namespace create TRIPS
    Paste the printed id into wrangler.jsonc
-3. Set "name" in wrangler.jsonc to your existing Worker's name
+3. "name" in wrangler.jsonc must match the Worker's name in Cloudflare (holisplit)
 4. npx wrangler deploy
 
 ## Privacy
@@ -40,7 +76,7 @@ If the couple shares money, e.g. a joint Monzo account, switch on **Joint accoun
 ## Help and What's new
 - **Help** (Settings → Help, or "How it works" on an empty trip) is a short guide built into the app, so it works offline.
 - **What's new:** after an update, people who've used the app before see a one-line banner. **See** opens the list of changes. New users don't see it.
-- **Adding to it:** add an entry at the top of `NEWS` in `public/index.html` with each change worth telling the group about. The date of the newest entry is also the "Updated" date in Settings.
+- **Adding to it:** add an entry at the top of `NEWS` in `src/js/help.js` with each change worth telling the group about. The date of the newest entry is also the "Updated" date in Settings.
 
 ## Expenses in another currency
 Tap the currency next to the amount (marked ⌄) and pick e.g. € on a £ trip.
@@ -78,6 +114,27 @@ and the reply is capped at 160 tokens (usually ~50), so a scan uses about 10-40 
 roughly 250-1,000 scans a day within the free allowance. Each trip is also capped at 100
 scans a day. The Worker returns the model's token usage with each scan, and Cloudflare's
 dashboard (AI > Workers AI) shows the exact neurons used.
+
+## Uneven splits
+On any expense, under the people: **Equally**, **By shares** (whole numbers, e.g. 2 for someone who had twice as much) or
+**By amount** (typed in the expense's currency; must add up to the total). Saved as `split: {m: 's'|'a', w: {personId: weight}}`
+and shared in proportion to the weights, so an expense in € on a £ trip splits by the € amounts typed.
+Leftover pennies go to whoever lost most in rounding (payer first on a tie, as with equal splits).
+
+Expenses with a split also carry `lv: 2`. A phone on an older version of the app that finds something newer than it
+understands (`lv` above its own) shows a "Reload to update" banner and won't edit that expense, instead of showing wrong amounts.
+
+## Activity
+Every change goes through `save()`, which compares the trip with the last save and adds an entry to the trip's log (`S.log`:
+who, what, when, and what changed, e.g. "amount £90.00 → £96.00"). The log is encrypted and synced with the trip; phones merge it
+by entry, newest 300 kept. Setting up (naming the trip, adding people) starts the log only once there's an expense.
+A line under your balance on Expenses shows the latest change and opens the full list; it's highlighted when there are
+changes by others since you last looked. The sync status sits under the trip name (tap it to sync now).
+
+## Edit clashes
+Editing an expense someone else changes meanwhile: the form says who changed what, with **Use theirs instead**. Saving keeps yours.
+Each edit records the version it started from (`pu`) and who made it (`eb`), so two edits made apart (e.g. both offline) are
+spotted when they meet: both people get a note saying whose version was kept (the later one, as before).
 
 ## Duplicate checks
 A duplicate always needs the **same amount** (to the cent, or the same foreign amount), plus one of:
