@@ -364,3 +364,4 @@ button.actrow:hover{background:var(--tile)}
 .actstrip.new{background:var(--soft);color:var(--soft-ink)}
 .actstrip.new>svg.i,.actstrip.new small,.actstrip.new .caret{color:var(--soft-ink)}
 #rgo{flex:1}
+.newlink{margin:0 2px;color:var(--muted);font-size:.92rem;line-height:1.45}

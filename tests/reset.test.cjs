@@ -94,5 +94,13 @@ test('Settings: reset link is at the bottom, next to Delete, and opens its own s
     A.run(`document.querySelector('#rcancel').click()`);
     assert.equal($('#scrim').hidden, true, 'Cancel closes');
     assert.equal(A.run('S.id'), id, 'nothing reset');
+    // Reset for real: a screen to send the new link straight away
+    A.run(`document.querySelector('#gear').click()`);A.run(`document.querySelector('#sreset').click()`);
+    A.run(`document.querySelector('#rgo').click()`);
+    for (let i = 0; i < 50 && !$('#nlWa'); i++) await tick(20);
+    const newId = A.run('S.id');
+    assert.notEqual(newId, id, 'new link');
+    assert.match($('#scrim h3').textContent, /New link ready/);
+    assert.match(decodeURIComponent($('#nlWa').getAttribute('href')), new RegExp(`New link for \\*Family\\*.*#${newId}\\.`, 's'));
   } finally { A.w.close(); }
 });

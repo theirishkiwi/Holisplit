@@ -25,7 +25,7 @@ function openSettings(){
     </div>
     <h2 style="margin:4px 4px -6px">Link and deleting</h2>
     <div class="set">
-      ${syncOn()?(S.key?`<div><label>Reset invite link<small>If the link has gone to the wrong people. Everyone gets a new link.</small></label><button class="btn" id="sreset">Reset…</button></div>`
+      ${syncOn()?(S.key?`<div><label>Reset invite link<small>If the link has gone to the wrong people. Everyone gets a new link.</small></label><button class="btn danger" id="sreset">Reset…</button></div>`
         :`<div><label>Encrypt this trip<small>So only people with the link can read it. Everyone gets a new link.</small></label><button class="btn" id="sreset">Encrypt…</button></div>`):''}
       <div><label>Delete this trip<small>From this phone or for everyone. It can be restored for 30 days.</small></label><button class="btn danger" id="sdel">Delete…</button></div>
     </div>

@@ -16,6 +16,22 @@ function adopt(old){
   prefs.trips=prefs.trips.filter(t=>t.id!==old.id);
   fix(S);if(n)save();else persist();render();
 }
+/* straight after a reset: send the new link to the group in one tap (WhatsApp or copy), while it's on your mind */
+function openNewLink(encrypted){
+  const msg=`${encrypted?`*${S.name}* on Holiday Split is now encrypted.`:`New link for *${S.name}* on Holiday Split (the old one no longer works).`} Use this one:\n${tripLink()}`;
+  const sc=openScrim();
+  sc.innerHTML=`<div class="sheet" role="dialog" aria-label="New link ready">
+    <div class="sh"><button class="iconbtn" data-dismiss aria-label="Close">${ico('i-down')}</button><h3>New link ready</h3></div>
+    <p class="newlink">${encrypted?'The trip is encrypted.':'The old link no longer works.'} Send the new one to the group so they can keep syncing. Their changes carry over when they open it.</p>
+    <div class="invite"><a class="btn wa" id="nlWa" href="https://wa.me/?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener">${ico('i-chat')}WhatsApp</a><button class="btn primary" id="nlCopy">${ico('i-copy')}Copy link</button></div>
+    <button class="btn" data-dismiss>Done</button>
+  </div>`;
+  sc.onclick=e=>{
+    if(e.target===sc)return close();
+    if(e.target.closest('#nlCopy'))copy(tripLink(),'Link copied');
+    if(e.target.closest('#nlWa'))setTimeout(close,300);
+  };
+}
 async function resetLink(){
   if(!syncOn())return toast('This needs a connection');
   const before=S,from=S.id,hdr={'content-type':'application/json'};
@@ -26,6 +42,6 @@ async function resetLink(){
     r=await fetch(api(from)+'/move',{method:'POST',headers:hdr,body:JSON.stringify({to:t.id})});
     if(!r.ok)throw 0;
     S=await decTrip(await r.json(),t.key);adopt(before);
-    toast(before.key?'New link ready. Send it to the group.':'Trip encrypted. Send the new link to the group.');tab='ppl';render();
+    tab='ppl';render();openNewLink(!before.key);
   }catch(e){S=before;toast('Couldn\'t do that. Check your connection and try again.')}
 }
