@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "build": "echo \"No build step yet: public/index.html is used as it is\"",
     "test": "TZ=Europe/Rome node --test tests/calc.test.cjs tests/worker.test.cjs tests/reset.test.cjs tests/encryption.test.cjs tests/delete.test.cjs tests/sheets.test.cjs tests/paid.test.cjs tests/pay.test.cjs tests/erase.test.cjs tests/layout.test.cjs tests/scan.test.cjs tests/dup.test.cjs tests/offline.test.cjs tests/settlecur.test.cjs tests/help.test.cjs tests/exprate.test.cjs",
     "test:e2e": "node --test --test-concurrency=1 tests/e2e/flows.test.mjs"
   },
