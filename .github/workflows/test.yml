@@ -10,3 +10,17 @@ jobs:
           node-version: 22
       - run: npm install
       - run: npm test
+
+  # The safety net: the main things a group does, in a real browser (Chromium) against the real server code.
+  # Runs here only; Cloudflare's build runs `npm test`, which has no browser.
+  browser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install
+      - run: npm install --no-save playwright@1.63.0
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e

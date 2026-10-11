@@ -8,6 +8,21 @@ wrangler.jsonc     config: static assets + KV namespace "TRIPS"
 npm install
 npm test      (111 tests: split maths, settling, couples, joint accounts, payments, currencies, amount entry, dates, worker sync, photos, link reset, encryption, delete and restore, closing screens, paid toggle, payment links, permanent delete, layout, receipt scanning, duplicate checks, offline, settling in another currency, help and what's new, day-of-expense rates)
 
+### Browser tests (the safety net)
+`npm run test:e2e` runs the main things a group does in a real browser (Chromium), against the real `worker.js` with in-memory storage and fake rates and receipt AI. They only tap, type and read the screen, never the app's internal code, so they keep working however the code is organised. They cover:
+- a new trip
+- two phones sharing a link
+- a joint-account couple
+- paying with Undo
+- settling in £
+- the day's exchange rate
+- offline
+- the duplicate check
+- receipt scanning
+- Help
+
+They run on GitHub (see `.github/workflows/test.yml`). To run them locally: `npm install --no-save playwright && npx playwright install chromium`.
+
 ## Deploy (one time)
 1. npx wrangler login
 2. npx wrangler kv namespace create TRIPS
