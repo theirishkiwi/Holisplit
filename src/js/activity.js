@@ -67,7 +67,7 @@ function mergeLog(t){
 /* ---- The Activity sheet, and the dot on its button for changes made by others since you last looked ---- */
 const seenAt=()=>(prefs.seen||{})[S.id]||0;
 const unseen=()=>(S.log||[]).filter(x=>x.t>seenAt()&&x.by!==me()).length;
-function drawActDot(){const b=$('#actBtn');if(b){b.hidden=!!S.sample||!(S.log||[]).length;b.classList.toggle('dot',unseen()>0)}}
+function drawActDot(){const b=$('#actBtn');if(b){b.hidden=false;b.classList.toggle('dot',unseen()>0)}}
 function actLine(x){
   const who=x.by&&x.by===me()?'You':x.by?esc(first(pname(x.by))):'Someone';
   const what=`<b>${esc(x.d)}</b>`,amt=x.m!=null?` <span class="am">${money(x.m)}</span>`:'';
@@ -94,7 +94,7 @@ function openActivity(){
   const sc=openScrim();
   sc.innerHTML=`<div class="sheet" role="dialog" aria-label="Activity">
     <div class="sh"><button type="button" class="iconbtn" data-dismiss aria-label="Close">${ico('i-down')}</button><h3>Activity</h3></div>
-    ${h||'<p class="empty">Nothing yet. Changes anyone in the group makes show up here.</p>'}
+    ${h||'<p class="empty">Nothing yet. From now on, when anyone in the group adds, changes or deletes an expense, it shows up here.</p>'}
   </div>`;
   sc.onclick=e=>{
     if(e.target===sc)return close();
