@@ -128,7 +128,8 @@ understands (`lv` above its own) shows a "Reload to update" banner and won't edi
 Every change goes through `save()`, which compares the trip with the last save and adds an entry to the trip's log (`S.log`:
 who, what, when, and what changed, e.g. "amount £90.00 → £96.00"). The log is encrypted and synced with the trip; phones merge it
 by entry, newest 300 kept. Setting up (naming the trip, adding people) starts the log only once there's an expense.
-The clock at the top opens it; a dot shows changes by others since you last looked.
+A line under your balance on Expenses shows the latest change and opens the full list; it's highlighted when there are
+changes by others since you last looked. The sync status sits under the trip name (tap it to sync now).
 
 ## Edit clashes
 Editing an expense someone else changes meanwhile: the form says who changed what, with **Use theirs instead**. Saving keeps yours.

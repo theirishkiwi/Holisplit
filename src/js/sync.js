@@ -40,6 +40,7 @@ function ping(){return fetch('/api/ping',{cache:'no-store'}).then(r=>r.ok?r.json
 const ready=ping().then(o=>{setNet(o==='offline'&&syncOn()?'offline':syncOn()?'sync':'off');if(o!=='offline')sync()});
 function setNet(s){const c=$('#cloud'),on=syncOn();c.hidden=!on;c.dataset.s=s;c.setAttribute('aria-label',{ok:'Synced',sync:'Syncing',offline:'Offline. Tap to retry'}[s]||'Sync');
   c.querySelector('use').setAttribute('href',s==='offline'?'#i-cloudoff':'#i-cloud');
+  $('#cloudTxt').textContent={ok:'Synced',sync:'Syncing…',offline:'Offline'}[s]||'';
   const b=$('#offline');if(!b)return;b.hidden=!(on&&s==='offline');
   if(!b.hidden)$('#offText').textContent=S.dirty?'You\'re offline. Your changes are saved on this phone and will sync when you\'re back online.':'You\'re offline. You can still add and edit expenses. They\'ll sync when you\'re back online.'}
 function kick(){clearTimeout(kickT);kickT=setTimeout(sync,500)}

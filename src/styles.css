@@ -153,7 +153,7 @@ h2{font:600 .78rem var(--body);text-transform:uppercase;letter-spacing:.08em;col
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(96px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--bg);padding:9px 16px;border-radius:10px;font-size:.9rem;font-weight:500;z-index:20;white-space:nowrap}
 @media (prefers-reduced-motion:no-preference){.sheet{animation:up .18s ease-out}@keyframes up{from{transform:translateY(30px);opacity:.6}}}
 /* sync + trips */
-#cloud[data-s="ok"]{color:var(--go)}
+
 @media (prefers-reduced-motion:no-preference){#cloud[data-s="sync"] svg{animation:pulse 1s ease-in-out infinite}@keyframes pulse{50%{opacity:.3}}}
 .set .trip{width:100%;border:0;background:none;text-align:left;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 0;font-weight:600;border-bottom:1px solid var(--line)}
 .set .trip:last-child{border-bottom:0}
@@ -335,8 +335,6 @@ a.paidbtn{text-decoration:none;display:inline-block}
 .ssum.ok{color:var(--pos)}.ssum.off{color:var(--neg)}
 .who .uneven{font-size:.72rem;font-weight:600;color:var(--muted);background:var(--tile);border-radius:6px;padding:0 5px}
 /* activity */
-#actBtn{position:relative}
-#actBtn.dot::after{content:"";position:absolute;top:9px;right:9px;width:9px;height:9px;border-radius:50%;background:var(--neg);box-shadow:0 0 0 2px var(--card)}
 .actlist{list-style:none;margin:0;padding:4px;background:var(--card);border-radius:16px}
 .actrow{display:flex;align-items:flex-start;gap:10px;width:100%;border:0;background:none;text-align:left;padding:10px 8px;border-radius:12px;color:var(--fg);font:inherit;font-size:.92rem;line-height:1.35}
 button.actrow:hover{background:var(--tile)}
@@ -350,3 +348,18 @@ button.actrow:hover{background:var(--tile)}
 /* edit clash */
 .clash{background:var(--note);color:var(--note-ink);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:6px;font-size:.9rem;line-height:1.4}
 .clash .btn{align-self:flex-start;padding:9px 14px;background:var(--card);color:var(--fg);margin-top:2px}
+/* sync status under the trip name; latest activity on the Expenses tab */
+.tripsub{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.tripsub:has(#tripsub:empty):has(#cloud[hidden]){display:none}
+#tripsub:not(:empty)+.syncst:not([hidden])::before{content:"·";color:var(--muted);margin-right:2px}
+.syncst{border:0;background:none;padding:0;display:inline-flex;align-items:center;gap:4px;color:var(--muted);font:inherit}
+.syncst svg.i{width:15px;height:15px}
+#cloud[data-s="ok"] svg{color:var(--go)}
+.actstrip{display:flex;align-items:center;gap:10px;width:100%;border:0;background:var(--card);border-radius:16px;padding:11px 12px 11px 14px;margin:-4px 0 12px;text-align:left;color:var(--fg);font:inherit;font-size:.9rem;line-height:1.35}
+.actstrip>svg.i{color:var(--muted);flex:none}
+.actstrip .as{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.actstrip .as>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.actstrip small{color:var(--muted);font-size:.78rem}
+.actstrip .caret{color:var(--muted);flex:none;width:18px;height:18px}
+.actstrip.new{background:var(--soft);color:var(--soft-ink)}
+.actstrip.new>svg.i,.actstrip.new small,.actstrip.new .caret{color:var(--soft-ink)}

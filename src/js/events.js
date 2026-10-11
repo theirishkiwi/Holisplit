@@ -4,7 +4,6 @@ $('#trip').onchange=e=>{S.name=e.target.value.trim()||'Trip';S.nu=now();save();r
 $('#clearSample').onclick=newTrip;
 $('#reloadBtn').onclick=()=>location.reload();
 $('#gear').onclick=openSettings;
-$('#actBtn').onclick=openActivity;
 $('#cloud').onclick=()=>sync();
 $('#retryBtn').onclick=async()=>{const b=$('#retryBtn');b.disabled=true;b.textContent='Trying…';
   if(!scanAvail)await ping();await sync();b.disabled=false;b.textContent='Retry';
@@ -51,6 +50,7 @@ document.addEventListener('click',e=>{
     const p=S.people.find(x=>x.id===id),q=partner(id);if(q){const o=person(q);delete o.pair;delete o.joint;o.u=now()}delete p.pair;delete p.joint;p.del=true;p.u=now();save();render();return}
   if(e.target.closest('#sxBtn'))return openSettleCur();
   if(e.target.closest('[data-help]'))return openHelp();
+  if(e.target.closest('[data-activity]'))return openActivity();
   if(e.target.closest('#copy'))copy(summary(),'Copied');
   if(e.target.closest('#copyLink'))copy(tripLink(),'Link copied');
 });

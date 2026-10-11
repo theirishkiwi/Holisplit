@@ -57,11 +57,11 @@ test('logs from two phones merge by entry; the dot shows changes by others until
     assert.deepEqual(log().map(x => x[2]), ['Dinner', 'Taxi'], 'each entry once');
     assert.equal(P.run('S.expenses.length'), 2);
     assert.equal(log().length, 2, 'merging from the group doesn\'t log it again as this phone\'s change');
-    assert.equal($('#actBtn').hidden, false);
-    assert.ok($('#actBtn').classList.contains('dot'), 'new from Leanne');
-    P.run(`document.querySelector('#actBtn').click()`);
+    assert.ok($('.actstrip.new'), 'news from Leanne highlighted on Expenses');
+    assert.match(txt('.actstrip'), /Leanne added Taxi €30\.00/);
+    P.run(`document.querySelector('[data-activity]').click()`);
     assert.match(txt('#scrim'), /Activity.*Leanne added Taxi €30\.00.*You added Dinner €90\.00/);
-    assert.ok(!$('#actBtn').classList.contains('dot'), 'seen');
+    assert.ok($('.actstrip') && !$('.actstrip.new'), 'seen');
     P.run(`document.querySelector('[data-act="y"]').click()`);
     await new Promise(r => setTimeout(r, 80));
     assert.match(txt('#eform h3'), /Edit expense/, 'tapping an entry opens the expense');

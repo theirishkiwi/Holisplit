@@ -22,11 +22,9 @@
 <div class="wrap">
   <header>
     <input id="trip" type="text" aria-label="Trip name">
-    <button class="iconbtn" id="cloud" aria-label="Sync now" hidden><svg class="i"><use href="#i-cloud"/></svg></button>
-    <button class="iconbtn" id="actBtn" aria-label="Activity"><svg class="i"><use href="#i-clock"/></svg></button>
     <button class="iconbtn" id="gear" aria-label="Settings"><svg class="i"><use href="#i-gear"/></svg></button>
   </header>
-  <p class="tripsub" id="tripsub"></p>
+  <p class="tripsub"><span id="tripsub"></span><button class="syncst" id="cloud" aria-label="Sync now" hidden><svg class="i"><use href="#i-cloud"/></svg><span id="cloudTxt"></span></button></p>
   <div class="banner" id="deleted" hidden><span id="delText"></span><button id="restoreBtn">Restore</button></div>
   <div class="banner" id="revoked" hidden><span>This trip's link was reset. Open the new link from the group to keep syncing. Your changes will carry over.</span></div>
   <div class="banner offline" id="offline" hidden role="status"><svg class="i"><use href="#i-cloudoff"/></svg><span id="offText"></span><button id="retryBtn">Retry</button></div>

@@ -231,8 +231,8 @@ test('two phones: a change while you\'re editing is flagged, and Activity shows 
       await A.page.click('#useTheirs');
       await until(async () => (await A.page.inputValue('#famt')) === '96.00', 'their version');
       await closeSheet(A.page);
-      assert.ok(await A.page.locator('#actBtn.dot').count(), 'dot for news from the group');
-      await A.page.click('#actBtn');
+      assert.match(await text(A.page, '.actstrip.new'), /Leanne changed Dinner/, 'news from the group on Expenses');
+      await A.page.click('[data-activity]');
       assert.match(await text(A.page, '#scrim'), /Leanne changed Dinner amount £90\.00 → £96\.00.*You added Dinner £90\.00/);
       noErrors(A.page); noErrors(B.page);
     } finally { await B.ctx.close(); }

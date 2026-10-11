@@ -1,7 +1,7 @@
 /* ---- Views ---- */
 let tab='exp',open=null,linking=null;
 function render(){
-  if(snap.trip!==S)snapReset();drawActDot();
+  if(snap.trip!==S)snapReset();
   if(document.activeElement!==$('#trip'))$('#trip').value=S.name;
   $('#tripsub').textContent=tripSub();
   $('#sample').hidden=!S.sample;$('#newer').hidden=!(tooNew(S)||S.expenses.some(tooNew)||S.people.some(tooNew));$('#revoked').hidden=!S.revoked;
@@ -52,7 +52,7 @@ function rExp(){
   const E=expenses();
   const how='<br><button class="linkbtn" data-help>How it works</button>';
   if(!people().length){$('#exp').innerHTML=`<p class="empty">Add your group first.${how}</p>`;return}
-  let h=meCard();
+  let h=meCard()+actStrip();
   if(!E.length){$('#exp').innerHTML=h+`<p class="empty">No expenses yet.${how}</p>`;return}
   const days=[...new Set(E.map(e=>e.date))];
   if(!open)open=new Set([days[0]]);

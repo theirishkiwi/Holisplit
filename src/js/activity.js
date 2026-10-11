@@ -67,7 +67,14 @@ function mergeLog(t){
 /* ---- The Activity sheet, and the dot on its button for changes made by others since you last looked ---- */
 const seenAt=()=>(prefs.seen||{})[S.id]||0;
 const unseen=()=>(S.log||[]).filter(x=>x.t>seenAt()&&x.by!==me()).length;
-function drawActDot(){const b=$('#actBtn');if(b){b.hidden=false;b.classList.toggle('dot',unseen()>0)}}
+/* on the Expenses tab, under your balance: the latest change (news from the group highlighted until you've looked) */
+const ago=t=>{const m=Math.round((now()-t)/6e4);if(m<1)return 'just now';if(m<60)return `${m} min ago`;const h=Math.round(m/60);if(h<24&&ymd(new Date(t))===today())return `${h} h ago`;
+  return fmtDate(ymd(new Date(t)))+', '+new Date(t).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})};
+function actStrip(){
+  const L=S.log||[];if(S.sample||!L.length)return '';
+  const n=unseen(),x=n?L.filter(y=>y.t>seenAt()&&y.by!==me()).at(-1):L.at(-1);
+  return `<button class="actstrip${n?' new':''}" data-activity>${ico('i-clock')}<span class="as"><span>${actLine(x)}</span><small>${ago(x.t)}${n>1?` · ${n} new`:''}</small></span>${ico('i-chev','i caret')}</button>`;
+}
 function actLine(x){
   const who=x.by&&x.by===me()?'You':x.by?esc(first(pname(x.by))):'Someone';
   const what=`<b>${esc(x.d)}</b>`,amt=x.m!=null?` <span class="am">${money(x.m)}</span>`:'';
@@ -81,7 +88,7 @@ function actLine(x){
 }
 function openActivity(){
   const L=(S.log||[]).slice().reverse(),seen=seenAt(),m=me();
-  prefs.seen=prefs.seen||{};prefs.seen[S.id]=now();savePrefs();drawActDot();
+  prefs.seen=prefs.seen||{};prefs.seen[S.id]=now();savePrefs();if(tab==='exp')rExp();
   const live=id=>S.expenses.some(e=>e.id===id&&!e.del);
   let h='',day='';
   L.forEach(x=>{
