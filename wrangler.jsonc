@@ -6,6 +6,10 @@
   // The normal workers.dev address, plus a separate test address for each branch's preview build
   "workers_dev": true,
   "preview_urls": true,
+  // The page is built from src/ before every deploy and preview upload, whatever the dashboard's build settings say
+  "build": {
+    "command": "node build.mjs"
+  },
   "assets": {
     "directory": "./public",
     "binding": "ASSETS"
